@@ -79,6 +79,7 @@
   .scan-head .x{background:#2a2f36;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:11px;}
   #reader{flex:1;width:100%;overflow:hidden;}
   .scan-tip{position:absolute;bottom:36px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 4px #000;padding:0 20px;}
+  #zoomSlider{position:absolute;bottom:78px;left:24px;right:24px;width:auto;height:30px;accent-color:#1763a6;z-index:3;}
   .memo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0 4px;}
   .memo label{display:block;font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.4px;}
   .memo textarea{width:100%;font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;font-family:inherit;}
@@ -228,7 +229,8 @@
     </div>
   </div>
   <div id="reader"></div>
-  <div class="scan-tip">바코드를 사각형에 꽉 차게 · 10~20cm 거리 · 초점 잡힐 때까지 잠깐 정지 · 어두우면 🔦조명</div>
+  <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="2" style="display:none;">
+  <div class="scan-tip">바코드를 화면 가운데로 (꽉 안 맞아도 OK) · 2배 줌·슬라이더(지원 시) · 초점 잡힐 때까지 정지 · 어두우면 🔦</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -280,22 +282,31 @@
     if(!window.Html5Qrcode){ alert('스캐너 로딩 실패 — 인터넷 연결을 확인하세요.'); return; }
     scanOv.classList.add('show');
     html5qr=new Html5Qrcode("reader",{ formatsToSupport:fmtList(), experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false });
-    var box=function(vw){ var w=Math.min(vw*0.92,380); return {width:Math.round(w), height:Math.round(Math.max(120,w*0.5))}; };
     var vc={ facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}, advanced:[{focusMode:"continuous"}] };
-    html5qr.start({facingMode:"environment"}, {fps:15, qrbox:box, videoConstraints:vc},
+    html5qr.start({facingMode:"environment"}, {fps:12, videoConstraints:vc},
       function(text){
         serialInput.value=text; state['_serial']=text; save();
         if(navigator.vibrate) navigator.vibrate(90);
         stopScan();
       }, function(){}
     ).then(function(){
-      try{ var caps=html5qr.getRunningTrackCapabilities&&html5qr.getRunningTrackCapabilities();
-        if(caps&&caps.torch){ document.getElementById('torchBtn').style.display='inline-flex'; } }catch(e){}
+      try{
+        var caps=html5qr.getRunningTrackCapabilities?html5qr.getRunningTrackCapabilities():null;
+        if(caps&&caps.torch){ document.getElementById('torchBtn').style.display='inline-flex'; }
+        if(caps&&caps.zoom){
+          var z=caps.zoom, mn=(z.min||1), mx=(z.max||5), tgt=Math.max(mn,Math.min(2,mx));
+          var sl=document.getElementById('zoomSlider');
+          sl.min=mn; sl.max=mx; sl.step=(z.step||0.1); sl.value=tgt; sl.style.display='block';
+          html5qr.applyVideoConstraints({advanced:[{zoom:tgt}]}).catch(function(){});
+          sl.oninput=function(){ html5qr.applyVideoConstraints({advanced:[{zoom:parseFloat(sl.value)}]}).catch(function(){}); };
+        }
+      }catch(e){}
     }).catch(function(e){ alert('카메라를 열 수 없어요: '+e); scanOv.classList.remove('show'); });
   }
   function stopScan(){
     if(html5qr){ html5qr.stop().then(function(){ html5qr.clear(); html5qr=null; }).catch(function(){ html5qr=null; }); }
     torchOn=false; var tb=document.getElementById('torchBtn'); if(tb){ tb.style.display='none'; tb.textContent='🔦 조명'; }
+    var zs=document.getElementById('zoomSlider'); if(zs){ zs.style.display='none'; }
     scanOv.classList.remove('show');
   }
   document.getElementById('scanBtn').addEventListener('click',startScan);
