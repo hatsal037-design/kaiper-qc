@@ -220,9 +220,15 @@
 </div>
 
 <div class="scan-ov" id="scanOv">
-  <div class="scan-head"><span class="t">📷 바코드 스캔</span><button class="x" id="scanClose">✕</button></div>
+  <div class="scan-head">
+    <span class="t">📷 바코드 스캔</span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="x" id="torchBtn" style="display:none;width:auto;padding:0 12px;font-size:13px;">🔦 조명</button>
+      <button class="x" id="scanClose">✕</button>
+    </div>
+  </div>
   <div id="reader"></div>
-  <div class="scan-tip">상자 바코드를 화면 안에 맞춰주세요</div>
+  <div class="scan-tip">바코드를 사각형에 꽉 차게 · 10~20cm 거리 · 초점 잡힐 때까지 잠깐 정지 · 어두우면 🔦조명</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -264,7 +270,7 @@
   serialInput.addEventListener('input',function(){ state['_serial']=serialInput.value; save(); });
 
   // 바코드 스캐너
-  var scanOv=document.getElementById('scanOv'), html5qr=null;
+  var scanOv=document.getElementById('scanOv'), html5qr=null, torchOn=false;
   function fmtList(){
     if(!window.Html5QrcodeSupportedFormats) return undefined;
     var F=Html5QrcodeSupportedFormats;
@@ -273,21 +279,33 @@
   function startScan(){
     if(!window.Html5Qrcode){ alert('스캐너 로딩 실패 — 인터넷 연결을 확인하세요.'); return; }
     scanOv.classList.add('show');
-    html5qr=new Html5Qrcode("reader",{formatsToSupport:fmtList(),verbose:false});
-    html5qr.start({facingMode:"environment"},{fps:10,qrbox:{width:300,height:170}},
+    html5qr=new Html5Qrcode("reader",{ formatsToSupport:fmtList(), experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false });
+    var box=function(vw){ var w=Math.min(vw*0.92,380); return {width:Math.round(w), height:Math.round(Math.max(120,w*0.5))}; };
+    var cam={ facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}, advanced:[{focusMode:"continuous"}] };
+    html5qr.start(cam, {fps:15, qrbox:box},
       function(text){
         serialInput.value=text; state['_serial']=text; save();
         if(navigator.vibrate) navigator.vibrate(90);
         stopScan();
       }, function(){}
-    ).catch(function(e){ alert('카메라를 열 수 없어요: '+e); scanOv.classList.remove('show'); });
+    ).then(function(){
+      try{ var caps=html5qr.getRunningTrackCapabilities&&html5qr.getRunningTrackCapabilities();
+        if(caps&&caps.torch){ document.getElementById('torchBtn').style.display='inline-flex'; } }catch(e){}
+    }).catch(function(e){ alert('카메라를 열 수 없어요: '+e); scanOv.classList.remove('show'); });
   }
   function stopScan(){
     if(html5qr){ html5qr.stop().then(function(){ html5qr.clear(); html5qr=null; }).catch(function(){ html5qr=null; }); }
+    torchOn=false; var tb=document.getElementById('torchBtn'); if(tb){ tb.style.display='none'; tb.textContent='🔦 조명'; }
     scanOv.classList.remove('show');
   }
   document.getElementById('scanBtn').addEventListener('click',startScan);
   document.getElementById('scanClose').addEventListener('click',stopScan);
+  document.getElementById('torchBtn').addEventListener('click',function(){
+    if(!html5qr) return; torchOn=!torchOn;
+    html5qr.applyVideoConstraints({advanced:[{torch:torchOn}]}).then(function(){
+      document.getElementById('torchBtn').textContent=torchOn?'🔦 끄기':'🔦 조명';
+    }).catch(function(){ torchOn=!torchOn; });
+  });
 
   // 비고
   var memoInput=document.getElementById('memoInput');
