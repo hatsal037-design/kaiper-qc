@@ -79,6 +79,35 @@
   .scan-head .x{background:#2a2f36;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:11px;}
   #reader{flex:1;width:100%;overflow:hidden;}
   .scan-tip{position:absolute;bottom:36px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 4px #000;padding:0 20px;}
+  .memo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0 4px;}
+  .memo label{display:block;font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.4px;}
+  .memo textarea{width:100%;font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;font-family:inherit;}
+  .memo textarea:focus{outline:none;border-color:var(--accent);}
+  .recbtn{background:#eceef1;color:#2a2f36;border:none;font-weight:800;font-size:14px;padding:11px 14px;border-radius:10px;cursor:pointer;flex-shrink:0;}
+  .recbtn:active{transform:scale(.97);}
+  .rec-ov{position:fixed;inset:0;z-index:55;background:var(--bg);display:none;flex-direction:column;}
+  .rec-ov.show{display:flex;}
+  .rec-head{padding:14px 16px calc(14px + env(safe-area-inset-top,0));background:#111418;color:#fff;display:flex;justify-content:space-between;align-items:center;}
+  .rec-head .t{font-weight:800;font-size:16px;} .rec-head .t em{font-style:normal;color:#7fd1a3;}
+  .rec-head .x{background:#2a2f36;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:11px;}
+  .rec-actions{display:flex;gap:10px;padding:12px;}
+  .rec-act{height:48px;border:none;border-radius:11px;font-weight:800;font-size:15px;cursor:pointer;}
+  .rec-act.primary{flex:1;background:var(--accent);color:#fff;}
+  .rec-act.danger{background:#fff;color:var(--ng);border:1.5px solid #f3c0c0;padding:0 16px;}
+  .rec-list{flex:1;overflow:auto;padding:0 12px 24px;}
+  .rec-empty{text-align:center;color:var(--sub);padding:40px 0;font-size:14px;}
+  .rec-row{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0;}
+  .rec-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .rec-top b{font-size:15px;font-variant-numeric:tabular-nums;}
+  .vd{font-size:12px;font-weight:800;padding:3px 9px;border-radius:7px;white-space:nowrap;}
+  .vd.pass{background:var(--okbg);color:var(--ok);} .vd.ng{background:var(--ngbg);color:var(--ng);} .vd.inc{background:#eef1f4;color:#6b7280;}
+  .rec-meta{font-size:12px;color:var(--sub);margin-top:4px;}
+  .rec-ng{font-size:13px;color:var(--ng);margin-top:6px;font-weight:600;}
+  .rec-memo{font-size:13px;color:#444;margin-top:5px;background:#f7f8fa;border-radius:7px;padding:6px 8px;white-space:pre-wrap;}
+  .rec-foot{text-align:right;margin-top:6px;}
+  .rec-del{background:none;border:none;color:#c33;font-size:12px;font-weight:700;cursor:pointer;}
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);z-index:70;background:#111418;color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 6px 20px rgba(0,0,0,.3);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
 <body>
@@ -134,25 +163,31 @@
   <div class="note">⏱️ 발열·지속은 시간이 걸리니 — 시작할 때 충전+최대풍량으로 <b>걸어두고</b> 마지막에 만져서 확인하면 흐름이 안 끊겨요.</div>
 
   <div class="sample-tag">— 샘플 1~2개만 —</div>
-  <div class="item" data-id="s5a"><div class="body"><div class="txt"><b>배터리 지속</b> — 최대풍량 만충 가동 → 3시간 전후 유지 (스톱워치)</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="note">🔋 <b>배터리 지속</b> — 최대풍량 만충 가동 → 3시간 전후 유지 (스톱워치) · <b>선택사항</b></div>
+
+  <div class="memo">
+    <label>비고 / 추가 피드백</label>
+    <textarea id="memoInput" rows="3" placeholder="이 개체 관련 메모·추가 피드백 (기록·엑셀에 함께 저장돼요)"></textarea>
+  </div>
 
 </main>
 
 <div class="toolbar">
-  <div class="meta">탭하면 OK / NG 토글 · 자동저장됨</div>
-  <button class="reset" id="resetBtn">↺ 다음 개체</button>
+  <div class="meta">기록 <b id="recBadge">0</b>건 · 자동저장</div>
+  <button class="recbtn" id="recBtn">📋 기록</button>
+  <button class="reset" id="resetBtn">💾 저장▶다음</button>
 </div>
 
-<div class="modal-ov" id="modalOv">
-  <div class="modal">
-    <div class="mtitle">다음 개체로?</div>
-    <div class="mtext">이 개체의 체크를 모두 지웁니다.</div>
-    <div class="mbtns">
-      <button class="mbtn cancel" id="mCancel">취소</button>
-      <button class="mbtn confirm" id="mConfirm">확인</button>
-    </div>
+<div class="rec-ov" id="recOv">
+  <div class="rec-head"><span class="t">검사 기록 <em id="recCount">0</em>건</span><button class="x" id="recClose">✕</button></div>
+  <div class="rec-actions">
+    <button id="exportBtn" class="rec-act primary">⬇ 엑셀(CSV) 내보내기</button>
+    <button id="clearRecBtn" class="rec-act danger">전체 삭제</button>
   </div>
+  <div class="rec-list" id="recList"></div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <div class="scan-ov" id="scanOv">
   <div class="scan-head"><span class="t">📷 바코드 스캔</span><button class="x" id="scanClose">✕</button></div>
@@ -224,13 +259,89 @@
   document.getElementById('scanBtn').addEventListener('click',startScan);
   document.getElementById('scanClose').addEventListener('click',stopScan);
 
-  var ov=document.getElementById('modalOv');
-  document.getElementById('resetBtn').addEventListener('click',function(){ ov.classList.add('show'); });
-  document.getElementById('mCancel').addEventListener('click',function(){ ov.classList.remove('show'); });
-  ov.addEventListener('click',function(e){ if(e.target===ov) ov.classList.remove('show'); });
-  document.getElementById('mConfirm').addEventListener('click',function(){
-    state={}; save(); render(); serialInput.value=''; ov.classList.remove('show'); window.scrollTo({top:0,behavior:'smooth'});
+  // 비고
+  var memoInput=document.getElementById('memoInput');
+  memoInput.value=state['_memo']||'';
+  memoInput.addEventListener('input',function(){ state['_memo']=memoInput.value; save(); });
+
+  // 토스트
+  var toastEl=document.getElementById('toast'), toastT=null;
+  function toast(msg){ toastEl.textContent=msg; toastEl.classList.add('show'); if(toastT)clearTimeout(toastT);
+    toastT=setTimeout(function(){ toastEl.classList.remove('show'); },1800); }
+  function pad(n){ return (n<10?'0':'')+n; }
+  function labelOf(it){ var t=it.querySelector('.txt').textContent.replace(/\s+/g,' ').trim().replace(/^핵심\s*/,'');
+    return t.split('—')[0].trim(); }
+  function esc(s){ return (''+(s||'')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // 기록 저장소
+  var RKEY='kaiper_qc_records', records=[];
+  try{ records=JSON.parse(localStorage.getItem(RKEY))||[]; }catch(e){ records=[]; }
+  function saveRecords(){ try{ localStorage.setItem(RKEY,JSON.stringify(records)); }catch(e){}
+    document.getElementById('recBadge').textContent=records.length;
+    document.getElementById('recCount').textContent=records.length; }
+
+  function saveNext(){
+    var ng=[], ok=0;
+    items.forEach(function(it){ var s=state[it.getAttribute('data-id')];
+      if(s==='ok') ok++; else if(s==='ng') ng.push(labelOf(it)); });
+    var serial=(state['_serial']||'').trim();
+    if(!serial && ok===0 && ng.length===0){ toast('저장할 내용이 없어요'); return; }
+    var d=new Date();
+    var dt=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+    var verdict = ng.length ? 'NG' : (ok===items.length ? 'PASS' : '미완료');
+    records.push({serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()});
+    saveRecords();
+    state={}; save(); render(); serialInput.value=''; memoInput.value='';
+    window.scrollTo({top:0,behavior:'smooth'});
+    toast('✓ 저장됨 · 총 '+records.length+'건');
+  }
+  document.getElementById('resetBtn').addEventListener('click',saveNext);
+
+  // 기록 보기
+  var recOv=document.getElementById('recOv');
+  function renderRecords(){
+    if(!records.length){ document.getElementById('recList').innerHTML='<div class="rec-empty">아직 저장된 기록이 없어요.</div>'; return; }
+    var h='';
+    records.forEach(function(r,i){
+      var cls=r.verdict==='PASS'?'pass':(r.verdict==='NG'?'ng':'inc');
+      h+='<div class="rec-row">'
+        +'<div class="rec-top"><b>'+(esc(r.serial)||'(시리얼 없음)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
+        +'<div class="rec-meta">'+r.dt+'</div>'
+        +(r.ng.length?'<div class="rec-ng">NG: '+esc(r.ng.join(', '))+'</div>':'')
+        +(r.memo?'<div class="rec-memo">'+esc(r.memo)+'</div>':'')
+        +'<div class="rec-foot"><button class="rec-del" data-i="'+i+'">삭제</button></div>'
+        +'</div>';
+    });
+    document.getElementById('recList').innerHTML=h;
+  }
+  document.getElementById('recBtn').addEventListener('click',function(){ renderRecords(); recOv.classList.add('show'); });
+  document.getElementById('recClose').addEventListener('click',function(){ recOv.classList.remove('show'); });
+  document.getElementById('recList').addEventListener('click',function(e){
+    var b=e.target.closest('.rec-del'); if(!b) return;
+    var i=+b.getAttribute('data-i');
+    if(confirm('이 기록을 삭제할까요?')){ records.splice(i,1); saveRecords(); renderRecords(); }
   });
+  document.getElementById('clearRecBtn').addEventListener('click',function(){
+    if(!records.length) return;
+    if(confirm('저장된 '+records.length+'건 기록을 전부 삭제할까요?')){ records=[]; saveRecords(); renderRecords(); }
+  });
+
+  // 엑셀(CSV) 내보내기
+  document.getElementById('exportBtn').addEventListener('click',function(){
+    if(!records.length){ toast('내보낼 기록이 없어요'); return; }
+    var rows=[['번호','시리얼','검사일시','판정','NG건수','NG항목','비고']];
+    records.forEach(function(r,i){ rows.push([i+1, r.serial, r.dt, r.verdict, r.ng.length, r.ng.join('; '), r.memo]); });
+    var csv=rows.map(function(row){ return row.map(function(c){ c=(''+c).replace(/"/g,'""');
+      return /[",\n\r]/.test(c)?'"'+c+'"':c; }).join(','); }).join('\r\n');
+    var blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8;'});
+    var d=new Date(), fn='KAIPER_QC_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.csv';
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+    toast('⬇ '+records.length+'건 내보냄');
+  });
+
+  saveRecords();
   render();
 })();
 </script>
