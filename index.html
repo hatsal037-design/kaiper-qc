@@ -157,10 +157,10 @@
       <input id="cartonInput" type="text" inputmode="text" autocomplete="off" placeholder="예: F010000030">
       <button id="cartonScanBtn" class="scanbtn">📷 스캔</button>
     </div>
-    <div class="hint">카톤 열 때 한 번만 스캔 → 그 카톤 제품들에 자동 적용 (시리얼만 매번 바뀜)</div>
+    <div class="hint">카톤 열 때 한 번만 스캔 → 그 카톤 제품 검사하는 동안 자동 유지</div>
   </div>
 
-  <div class="serial">
+  <div class="serial" style="display:none">
     <label>개체 시리얼</label>
     <div class="srow">
       <input id="serialInput" type="text" inputmode="text" autocomplete="off" placeholder="예: KP05001QE0010105">
@@ -411,7 +411,6 @@
     items.forEach(function(it){ var s=state[it.getAttribute('data-id')];
       if(s==='ok') ok++; else if(s==='ng') ng.push(labelOf(it)); });
     var serial=(state['_serial']||'').trim();
-    if(!serial){ toast('⚠️ 시리얼을 먼저 입력하세요'); serialInput.focus(); return; }
     var unchecked=items.length-(ok+ng.length);
     if(unchecked>0){
       toast('⚠️ 미체크 '+unchecked+'개 — 모든 항목을 체크해야 넘어가요');
@@ -450,8 +449,8 @@
     list.forEach(function(r){
       var cls=r.verdict==='PASS'?'pass':(r.verdict==='NG'?'ng':'inc');
       h+='<div class="rec-row'+(showArchive?' arch':'')+'">'
-        +'<div class="rec-top"><b>'+(esc(r.serial)||'(시리얼 없음)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng&&r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
-        +'<div class="rec-meta">'+(showArchive?'⤵ 이전 버전 · ':'')+(r.carton?'카톤 '+esc(r.carton)+' · ':'')+esc(r.dt||'')+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
+        +'<div class="rec-top"><b>'+(r.carton?'카톤 '+esc(r.carton):'(카톤 미입력)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng&&r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
+        +'<div class="rec-meta">'+(showArchive?'⤵ 이전 버전 · ':'')+esc(r.dt||'')+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
         +(r.ng&&r.ng.length?'<div class="rec-ng">NG: '+esc(r.ng.join(', '))+'</div>':'')
         +(r.memo?'<div class="rec-memo">'+esc(r.memo)+'</div>':'')
         +((local&&!showArchive)?'<div class="rec-foot"><button class="rec-del" data-id="'+esc(r.id||'')+'">삭제</button></div>':'')
@@ -493,8 +492,8 @@
     var parts=splitDedup(curList());
     var list = showArchive ? parts.archived : parts.latest;
     if(!list.length){ toast('내보낼 기록이 없어요'); return; }
-    var rows=[['번호','카톤번호','검사자','시리얼','검사일시','판정','NG건수','NG항목','비고']];
-    list.forEach(function(r,i){ rows.push([i+1, r.carton||'', r.inspector||'', r.serial||'', r.dt||'', r.verdict||'', (r.ng||[]).length, (r.ng||[]).join('; '), r.memo||'']); });
+    var rows=[['번호','카톤번호','검사자','검사일시','판정','NG건수','NG항목','비고']];
+    list.forEach(function(r,i){ rows.push([i+1, r.carton||'', r.inspector||'', r.dt||'', r.verdict||'', (r.ng||[]).length, (r.ng||[]).join('; '), r.memo||'']); });
     var csv=rows.map(function(row){ return row.map(function(c){ c=(''+c).replace(/"/g,'""');
       return /[",\n\r]/.test(c)?'"'+c+'"':c; }).join(','); }).join('\r\n');
     var blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8;'});
