@@ -152,6 +152,15 @@
 <main id="list">
 
   <div class="serial">
+    <label>카톤번호</label>
+    <div class="srow">
+      <input id="cartonInput" type="text" inputmode="text" autocomplete="off" placeholder="예: F010000030">
+      <button id="cartonScanBtn" class="scanbtn">📷 스캔</button>
+    </div>
+    <div class="hint">카톤 열 때 한 번만 스캔 → 그 카톤 제품들에 자동 적용 (시리얼만 매번 바뀜)</div>
+  </div>
+
+  <div class="serial">
     <label>개체 시리얼</label>
     <div class="srow">
       <input id="serialInput" type="text" inputmode="text" autocomplete="off" placeholder="예: KP05001QE0010105">
@@ -282,12 +291,18 @@
   serialInput.value=state['_serial']||'';
   serialInput.addEventListener('input',function(){ state['_serial']=serialInput.value; save(); });
 
+  // 카톤번호 (카톤 단위로 유지 — 시리얼처럼 매번 안 지워짐)
+  var cartonInput=document.getElementById('cartonInput');
+  var CKEY='kaiper_qc_carton', cartonNo=localStorage.getItem(CKEY)||'';
+  cartonInput.value=cartonNo;
+  cartonInput.addEventListener('input',function(){ cartonNo=cartonInput.value; try{localStorage.setItem(CKEY,cartonNo);}catch(e){} });
+
   // 바코드 스캐너
-  var scanOv=document.getElementById('scanOv'), html5qr=null, torchOn=false;
+  var scanOv=document.getElementById('scanOv'), html5qr=null, torchOn=false, scanTarget='serial';
   function fmtList(){
     if(!window.Html5QrcodeSupportedFormats) return undefined;
     var F=Html5QrcodeSupportedFormats;
-    return [F.CODE_128,F.CODE_39,F.CODE_93,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.ITF,F.CODABAR,F.QR_CODE];
+    return [F.CODE_128,F.CODE_39,F.CODE_93,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.ITF,F.CODABAR,F.QR_CODE,F.DATA_MATRIX];
   }
   function startScan(){
     if(!window.Html5Qrcode){ alert('스캐너 로딩 실패 — 인터넷 연결을 확인하세요.'); return; }
@@ -296,7 +311,8 @@
     var vc={ facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}, advanced:[{focusMode:"continuous"}] };
     html5qr.start({facingMode:"environment"}, {fps:12, videoConstraints:vc},
       function(text){
-        serialInput.value=text; state['_serial']=text; save();
+        if(scanTarget==='carton'){ cartonInput.value=text; cartonNo=text; try{localStorage.setItem(CKEY,cartonNo);}catch(e){} }
+        else { serialInput.value=text; state['_serial']=text; save(); }
         if(navigator.vibrate) navigator.vibrate(90);
         stopScan();
       }, function(){}
@@ -320,7 +336,8 @@
     var zs=document.getElementById('zoomSlider'); if(zs){ zs.style.display='none'; }
     scanOv.classList.remove('show');
   }
-  document.getElementById('scanBtn').addEventListener('click',startScan);
+  document.getElementById('scanBtn').addEventListener('click',function(){ scanTarget='serial'; startScan(); });
+  document.getElementById('cartonScanBtn').addEventListener('click',function(){ scanTarget='carton'; startScan(); });
   document.getElementById('scanClose').addEventListener('click',stopScan);
   document.getElementById('torchBtn').addEventListener('click',function(){
     if(!html5qr) return; torchOn=!torchOn;
@@ -407,7 +424,7 @@
     var d=new Date();
     var dt=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
     var verdict = ng.length ? 'NG' : 'PASS';
-    var rec={id:uid(), inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()};
+    var rec={id:uid(), carton:cartonNo, inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()};
     records.push(rec); saveRecords();   // 전부 보관(겹쳐도 삭제 안 함)
     pending.push(rec); savePending(); flushPending();
     state={}; save(); render(); serialInput.value=''; memoInput.value='';
@@ -434,7 +451,7 @@
       var cls=r.verdict==='PASS'?'pass':(r.verdict==='NG'?'ng':'inc');
       h+='<div class="rec-row'+(showArchive?' arch':'')+'">'
         +'<div class="rec-top"><b>'+(esc(r.serial)||'(시리얼 없음)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng&&r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
-        +'<div class="rec-meta">'+(showArchive?'⤵ 이전 버전 · ':'')+esc(r.dt||'')+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
+        +'<div class="rec-meta">'+(showArchive?'⤵ 이전 버전 · ':'')+(r.carton?'카톤 '+esc(r.carton)+' · ':'')+esc(r.dt||'')+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
         +(r.ng&&r.ng.length?'<div class="rec-ng">NG: '+esc(r.ng.join(', '))+'</div>':'')
         +(r.memo?'<div class="rec-memo">'+esc(r.memo)+'</div>':'')
         +((local&&!showArchive)?'<div class="rec-foot"><button class="rec-del" data-id="'+esc(r.id||'')+'">삭제</button></div>':'')
@@ -476,8 +493,8 @@
     var parts=splitDedup(curList());
     var list = showArchive ? parts.archived : parts.latest;
     if(!list.length){ toast('내보낼 기록이 없어요'); return; }
-    var rows=[['번호','검사자','시리얼','검사일시','판정','NG건수','NG항목','비고']];
-    list.forEach(function(r,i){ rows.push([i+1, r.inspector||'', r.serial||'', r.dt||'', r.verdict||'', (r.ng||[]).length, (r.ng||[]).join('; '), r.memo||'']); });
+    var rows=[['번호','카톤번호','검사자','시리얼','검사일시','판정','NG건수','NG항목','비고']];
+    list.forEach(function(r,i){ rows.push([i+1, r.carton||'', r.inspector||'', r.serial||'', r.dt||'', r.verdict||'', (r.ng||[]).length, (r.ng||[]).join('; '), r.memo||'']); });
     var csv=rows.map(function(row){ return row.map(function(c){ c=(''+c).replace(/"/g,'""');
       return /[",\n\r]/.test(c)?'"'+c+'"':c; }).join(','); }).join('\r\n');
     var blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8;'});
