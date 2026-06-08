@@ -55,7 +55,7 @@
     padding:10px 14px calc(10px + env(safe-area-inset-bottom,0));display:flex;gap:10px;align-items:center;
     box-shadow:0 -2px 12px rgba(0,0,0,.06);}
   .meta{flex:1;font-size:12px;color:var(--sub);}
-  .reset{background:#000000;color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:6px;cursor:pointer;}
+  .reset{background:#000000;color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:0;cursor:pointer;}
   .reset:active{transform:scale(.97);}
   .modal-ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:24px;}
   .modal-ov.show{display:flex;}
@@ -85,11 +85,11 @@
   #reader{flex:1;width:100%;overflow:hidden;}
   .scan-tip{position:absolute;bottom:36px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 4px #000;padding:0 20px;}
   #zoomSlider{position:absolute;bottom:78px;left:24px;right:24px;width:auto;height:30px;accent-color:#1763a6;z-index:3;}
-  .memo{background:var(--card);border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:14px 16px;margin-top:10px;}
+  .memo{background:#fffbe6;border-top:1px solid #f0e9c8;border-bottom:1px solid #f0e9c8;padding:14px 16px;margin-top:10px;}
   .memo label{display:block;font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.4px;}
   .memo textarea{width:100%;font-size:15px;padding:4px 0;border:none;background:transparent;resize:vertical;font-family:inherit;}
   .memo textarea:focus{outline:none;}
-  .recbtn{background:#eceef1;color:#3e4149;border:none;font-weight:800;font-size:14px;padding:11px 14px;border-radius:6px;cursor:pointer;flex-shrink:0;}
+  .recbtn{background:#eceef1;color:#3e4149;border:none;font-weight:800;font-size:14px;padding:11px 14px;border-radius:0;cursor:pointer;flex-shrink:0;}
   .recbtn:active{transform:scale(.97);}
   .rec-ov{position:fixed;inset:0;z-index:55;background:var(--bg);display:none;flex-direction:column;}
   .rec-ov.show{display:flex;}
@@ -152,15 +152,6 @@
 <main id="list">
 
   <div class="serial">
-    <label>카톤번호</label>
-    <div class="srow">
-      <input id="cartonInput" type="text" inputmode="text" autocomplete="off" placeholder="예: F010000030">
-      <button id="cartonScanBtn" class="scanbtn">📷 스캔</button>
-    </div>
-    <div class="hint">카톤 열 때 한 번만 스캔 → 그 카톤 제품 검사하는 동안 자동 유지</div>
-  </div>
-
-  <div class="serial" style="display:none">
     <label>개체 시리얼</label>
     <div class="srow">
       <input id="serialInput" type="text" inputmode="text" autocomplete="off" placeholder="예: KP05001QE0010105">
@@ -195,7 +186,7 @@
   <div class="item crit" data-id="s4h"><div class="body"><div class="txt"><span class="badge">핵심</span><span class="code">SW-02</span> 충전 중 작동버그 — 충전기 연결 10회 → 켰다 꺼지는 현상 0회</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
   <div class="item crit" data-id="s4i"><div class="body"><div class="txt"><span class="badge">핵심</span><span class="code">HW-04</span> 충전 중 빛비침 — 어두운 곳에서 내부 불빛 비침 없음</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
   <div class="item crit" data-id="s4j"><div class="body"><div class="txt"><span class="badge">핵심</span><span class="code">SW-03</span> 충전% 정확도 — 충전표시 vs 실사용 ±5% (충전 95%→켜면 70%대 = NG)</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
-  <div class="item crit" data-id="s4k"><div class="body"><div class="txt"><span class="badge">핵심</span><b>발열</b> — 충전·최대풍량 10분 후 손 체감 비정상 과열 없음</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="note">🌡️ <b>발열</b> — 충전·최대풍량 10분 후 손 체감 비정상 과열 없음 · <b>선택사항</b></div>
 
   <div class="note">⏱️ 발열·지속은 시간이 걸리니 — 시작할 때 충전+최대풍량으로 <b>걸어두고</b> 마지막에 만져서 확인하면 흐름이 안 끊겨요.</div>
 
@@ -291,14 +282,8 @@
   serialInput.value=state['_serial']||'';
   serialInput.addEventListener('input',function(){ state['_serial']=serialInput.value; save(); });
 
-  // 카톤번호 (카톤 단위로 유지 — 시리얼처럼 매번 안 지워짐)
-  var cartonInput=document.getElementById('cartonInput');
-  var CKEY='kaiper_qc_carton', cartonNo=localStorage.getItem(CKEY)||'';
-  cartonInput.value=cartonNo;
-  cartonInput.addEventListener('input',function(){ cartonNo=cartonInput.value; try{localStorage.setItem(CKEY,cartonNo);}catch(e){} });
-
   // 바코드 스캐너
-  var scanOv=document.getElementById('scanOv'), html5qr=null, torchOn=false, scanTarget='serial';
+  var scanOv=document.getElementById('scanOv'), html5qr=null, torchOn=false;
   function fmtList(){
     if(!window.Html5QrcodeSupportedFormats) return undefined;
     var F=Html5QrcodeSupportedFormats;
@@ -311,8 +296,7 @@
     var vc={ facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}, advanced:[{focusMode:"continuous"}] };
     html5qr.start({facingMode:"environment"}, {fps:12, videoConstraints:vc},
       function(text){
-        if(scanTarget==='carton'){ cartonInput.value=text; cartonNo=text; try{localStorage.setItem(CKEY,cartonNo);}catch(e){} }
-        else { serialInput.value=text; state['_serial']=text; save(); }
+        serialInput.value=text; state['_serial']=text; save();
         if(navigator.vibrate) navigator.vibrate(90);
         stopScan();
       }, function(){}
@@ -336,8 +320,7 @@
     var zs=document.getElementById('zoomSlider'); if(zs){ zs.style.display='none'; }
     scanOv.classList.remove('show');
   }
-  document.getElementById('scanBtn').addEventListener('click',function(){ scanTarget='serial'; startScan(); });
-  document.getElementById('cartonScanBtn').addEventListener('click',function(){ scanTarget='carton'; startScan(); });
+  document.getElementById('scanBtn').addEventListener('click',startScan);
   document.getElementById('scanClose').addEventListener('click',stopScan);
   document.getElementById('torchBtn').addEventListener('click',function(){
     if(!html5qr) return; torchOn=!torchOn;
@@ -411,6 +394,7 @@
     items.forEach(function(it){ var s=state[it.getAttribute('data-id')];
       if(s==='ok') ok++; else if(s==='ng') ng.push(labelOf(it)); });
     var serial=(state['_serial']||'').trim();
+    if(!serial){ toast('⚠️ 시리얼을 먼저 입력하세요'); serialInput.focus(); return; }
     var unchecked=items.length-(ok+ng.length);
     if(unchecked>0){
       toast('⚠️ 미체크 '+unchecked+'개 — 모든 항목을 체크해야 넘어가요');
@@ -423,7 +407,7 @@
     var d=new Date();
     var dt=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
     var verdict = ng.length ? 'NG' : 'PASS';
-    var rec={id:uid(), carton:cartonNo, inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()};
+    var rec={id:uid(), inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()};
     records.push(rec); saveRecords();   // 전부 보관(겹쳐도 삭제 안 함)
     pending.push(rec); savePending(); flushPending();
     state={}; save(); render(); serialInput.value=''; memoInput.value='';
@@ -449,7 +433,7 @@
     list.forEach(function(r){
       var cls=r.verdict==='PASS'?'pass':(r.verdict==='NG'?'ng':'inc');
       h+='<div class="rec-row'+(showArchive?' arch':'')+'">'
-        +'<div class="rec-top"><b>'+(r.carton?'카톤 '+esc(r.carton):'(카톤 미입력)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng&&r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
+        +'<div class="rec-top"><b>'+(esc(r.serial)||'(시리얼 없음)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng&&r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
         +'<div class="rec-meta">'+(showArchive?'⤵ 이전 버전 · ':'')+esc(r.dt||'')+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
         +(r.ng&&r.ng.length?'<div class="rec-ng">NG: '+esc(r.ng.join(', '))+'</div>':'')
         +(r.memo?'<div class="rec-memo">'+esc(r.memo)+'</div>':'')
@@ -492,8 +476,8 @@
     var parts=splitDedup(curList());
     var list = showArchive ? parts.archived : parts.latest;
     if(!list.length){ toast('내보낼 기록이 없어요'); return; }
-    var rows=[['번호','카톤번호','검사자','검사일시','판정','NG건수','NG항목','비고']];
-    list.forEach(function(r,i){ rows.push([i+1, r.carton||'', r.inspector||'', r.dt||'', r.verdict||'', (r.ng||[]).length, (r.ng||[]).join('; '), r.memo||'']); });
+    var rows=[['번호','검사자','시리얼','검사일시','판정','NG건수','NG항목','비고']];
+    list.forEach(function(r,i){ rows.push([i+1, r.inspector||'', r.serial||'', r.dt||'', r.verdict||'', (r.ng||[]).length, (r.ng||[]).join('; '), r.memo||'']); });
     var csv=rows.map(function(row){ return row.map(function(c){ c=(''+c).replace(/"/g,'""');
       return /[",\n\r]/.test(c)?'"'+c+'"':c; }).join(','); }).join('\r\n');
     var blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8;'});
