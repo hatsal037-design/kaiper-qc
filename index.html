@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>KAIPER Air Dock 입고 QC</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1a1d22; --sub:#6b7280;
+    --line:#e5e7eb; --ok:#16a34a; --okbg:#e9f7ef; --ng:#dc2626; --ngbg:#fdecec;
+    --crit:#b45309; --critbg:#fff7ed; --accent:#1763a6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;
+    background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45;padding-bottom:90px;}
+  header{position:sticky;top:0;z-index:10;background:#111418;color:#fff;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0));
+    box-shadow:0 2px 10px rgba(0,0,0,.18);}
+  .htitle{font-size:18px;font-weight:800;letter-spacing:.3px;}
+  .hsub{font-size:12px;color:#aab2bd;margin-top:3px;line-height:1.4;}
+  .progwrap{display:flex;align-items:center;gap:10px;margin-top:10px;}
+  .bar{flex:1;height:8px;background:#2a2f36;border-radius:99px;overflow:hidden;}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3b82f6,#16a34a);transition:width .25s;}
+  .pcount{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;min-width:62px;text-align:right;}
+  .crit-banner{display:none;margin-top:10px;background:var(--ng);color:#fff;font-weight:700;font-size:13px;
+    padding:8px 12px;border-radius:8px;}
+  .crit-banner.show{display:block;}
+  main{max-width:680px;margin:0 auto;padding:14px 12px;}
+  .step{margin:18px 4px 8px;font-size:13px;font-weight:800;color:var(--accent);letter-spacing:.4px;text-transform:uppercase;}
+  .step:first-child{margin-top:6px;}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:8px 0;padding:12px 12px 12px 14px;
+    display:flex;align-items:flex-start;gap:10px;transition:background .15s,border-color .15s;}
+  .item.crit{border-left:4px solid var(--crit);}
+  .item .body{flex:1;min-width:0;}
+  .item .txt{font-size:15px;font-weight:600;}
+  .item .txt .code{color:var(--accent);font-weight:800;}
+  .item.crit .badge{display:inline-block;background:var(--critbg);color:var(--crit);font-size:10px;font-weight:800;
+    padding:1px 6px;border-radius:5px;margin-right:6px;vertical-align:2px;border:1px solid #fde6c7;}
+  .btns{display:flex;gap:6px;flex-shrink:0;}
+  .btn{border:1.5px solid var(--line);background:#fff;color:var(--sub);font-weight:800;font-size:13px;
+    width:48px;height:42px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .btn:active{transform:scale(.95);}
+  .item[data-state="ok"]{background:var(--okbg);border-color:#bfe6cd;}
+  .item[data-state="ok"] .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff;}
+  .item[data-state="ng"]{background:var(--ngbg);border-color:#f3c0c0;}
+  .item[data-state="ng"] .btn.ng{background:var(--ng);border-color:var(--ng);color:#fff;}
+  .note{background:#fffdf5;border:1px dashed #e8d9a8;border-radius:10px;padding:10px 12px;margin:8px 0;
+    font-size:13px;color:#7a6a3a;display:flex;gap:8px;}
+  .sample-tag{font-size:11px;color:var(--sub);font-weight:700;margin:14px 4px 2px;}
+  .toolbar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:#fff;border-top:1px solid var(--line);
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom,0));display:flex;gap:10px;align-items:center;
+    box-shadow:0 -2px 12px rgba(0,0,0,.06);}
+  .meta{flex:1;font-size:12px;color:var(--sub);}
+  .reset{background:#111418;color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:10px;cursor:pointer;}
+  .reset:active{transform:scale(.97);}
+  .modal-ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:24px;}
+  .modal-ov.show{display:flex;}
+  .modal{background:#fff;border-radius:18px;max-width:400px;width:100%;padding:24px 20px 20px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.35);}
+  .modal .mtitle{font-size:19px;font-weight:800;margin-bottom:6px;}
+  .modal .mtext{font-size:14px;color:var(--sub);margin-bottom:20px;line-height:1.5;}
+  .modal .mbtns{display:flex;gap:12px;}
+  .modal .mbtn{flex:1;height:64px;border-radius:14px;font-size:19px;font-weight:800;cursor:pointer;border:none;}
+  .modal .mbtn.cancel{background:#eceef1;color:#3a3f46;}
+  .modal .mbtn.confirm{background:#111418;color:#fff;}
+  .modal .mbtn:active{transform:scale(.97);}
+  .serial{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:4px 0 8px;}
+  .serial label{display:block;font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.4px;}
+  .serial input{width:100%;font-size:18px;font-weight:700;padding:12px;border:1.5px solid var(--line);border-radius:10px;
+    font-variant-numeric:tabular-nums;letter-spacing:.5px;}
+  .serial input:focus{outline:none;border-color:var(--accent);}
+  .serial .hint{font-size:12px;color:var(--sub);margin-top:7px;line-height:1.45;}
+  .serial .srow{display:flex;gap:8px;}
+  .serial .srow input{flex:1;min-width:0;}
+  .scanbtn{flex-shrink:0;background:var(--accent);color:#fff;border:none;font-weight:800;font-size:14px;padding:0 14px;border-radius:10px;cursor:pointer;}
+  .scanbtn:active{transform:scale(.97);}
+  .scan-ov{position:fixed;inset:0;z-index:60;background:#000;display:none;flex-direction:column;}
+  .scan-ov.show{display:flex;}
+  .scan-head{padding:14px 16px calc(14px + env(safe-area-inset-top,0));color:#fff;display:flex;justify-content:space-between;align-items:center;background:#111418;}
+  .scan-head .t{font-weight:800;font-size:16px;}
+  .scan-head .x{background:#2a2f36;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:11px;}
+  #reader{flex:1;width:100%;overflow:hidden;}
+  .scan-tip{position:absolute;bottom:36px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 4px #000;padding:0 20px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="htitle">KAIPER Air Dock · 입고 QC</div>
+  <div class="hsub">표본: 카톤 균등 — 풀체크 30~50개 + 외관·포장 100~150개 · 준비물: USB-C 충전기, 어두운 공간, 스톱워치, 비교용 정상품 1개</div>
+  <div class="progwrap">
+    <div class="bar"><i id="barfill"></i></div>
+    <div class="pcount" id="pcount">0 / 0</div>
+  </div>
+  <div class="crit-banner" id="critBanner">🚨 핵심 항목 NG 발생 — 로트 판정 검토</div>
+</header>
+
+<main id="list">
+
+  <div class="serial">
+    <label>개체 시리얼</label>
+    <div class="srow">
+      <input id="serialInput" type="text" inputmode="text" autocomplete="off" placeholder="바코드 스캔 / 직접 입력">
+      <button id="scanBtn" class="scanbtn">📷 스캔</button>
+    </div>
+    <div class="hint">📷 <b>스캔</b>을 눌러 상자 바코드를 비추면 자동 입력돼요.</div>
+  </div>
+
+  <div class="step">STEP 1 · 📦 박스 열기</div>
+  <div class="item" data-id="s1a"><div class="body"><div class="txt">카톤·박스 파손·찌그러짐·<b>침수흔적</b> 없음</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s1b"><div class="body"><div class="txt">박스 인쇄·바코드·<b>KC 스티커</b> 정상 / 표기 스펙(풍속 8.5 등) 정확</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+
+  <div class="step">STEP 2 · 📋 구성품 꺼내기</div>
+  <div class="item" data-id="s2a"><div class="body"><div class="txt">구성품 동봉·수량: <b>본체 · 설명서(한/영)</b></div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s2b"><div class="body"><div class="txt">설명서 인쇄·언어 OK</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+
+  <div class="step">STEP 3 · 👀 외관·라벨·구조 (손에 들고)</div>
+  <div class="item" data-id="s3a"><div class="body"><div class="txt">외관: 스크래치·찍힘·이물·색차 / 사출 <b>버(burr)·웰드라인</b> 없음</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s3b"><div class="body"><div class="txt">마감: <b>클립 표면·VDI33 텍스처</b> 균일·얼룩·누락 없음 <span class="code">(HW-01/03)</span></div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s3c"><div class="body"><div class="txt">조립: <b>단차·유격·들뜸</b> 없음, 나사 체결</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s3d"><div class="body"><div class="txt">라벨: 본체 <span class="code">KPR-FAD-001</span>·KC마크·PC번호 / 배터리 KC라벨</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s3e"><div class="body"><div class="txt"><b>힌지</b> — 회전 부드럽·90도까지 / 헐겁거나 뻑뻑X / <b>끼걱(소음)·덜컥(유격) 없음</b> / 자세 유지</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s3f"><div class="body"><div class="txt"><b>클립</b> — 자체 <b>유격·체결 불량 없음</b> (헐거움·들뜸 없이 단단히 고정)</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+
+  <div class="step">STEP 4 · ⚙️ 켜서 돌려보기 (전원→풍속→모드→충전)</div>
+  <div class="item crit" data-id="s4a"><div class="body"><div class="txt"><span class="badge">핵심</span><b>전원/주기능</b> — 슬라이드로 켜짐·꺼짐, 바람 정상 토출</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s4b"><div class="body"><div class="txt"><b>슬라이더</b> — 걸림 없이 전 구간 부드럽게 이동</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s4c"><div class="body"><div class="txt"><b>풍속 1~10단</b> — 단계 올릴수록 바람 세짐 체감·먹통 단계 없음</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s4d"><div class="body"><div class="txt"><b>LCD</b> — 풍속·배터리 표시·세그먼트 빠짐 없음 / 속도표기 <b>1~10</b> <span class="code">(UX-01)</span></div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s4f"><div class="body"><div class="txt"><b>이상소음·진동</b> — 정상품 대비 유난히 시끄럽거나 떨리는 개체 골라내기</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item crit" data-id="s4g"><div class="body"><div class="txt"><span class="badge">핵심</span><span class="code">SW-01 E6</span> — 빠른 on/off 10회 + 일정속도 on/off → 발생 0회</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item crit" data-id="s4h"><div class="body"><div class="txt"><span class="badge">핵심</span><span class="code">SW-02</span> 충전 중 작동버그 — 충전기 연결 10회 → 켰다 꺼지는 현상 0회</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item crit" data-id="s4i"><div class="body"><div class="txt"><span class="badge">핵심</span><span class="code">HW-04</span> 충전 중 빛비침 — 어두운 곳에서 내부 불빛 비침 없음</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item crit" data-id="s4j"><div class="body"><div class="txt"><span class="badge">핵심</span><span class="code">SW-03</span> 충전% 정확도 — 충전표시 vs 실사용 ±5% (충전 95%→켜면 70%대 = NG)</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item crit" data-id="s4k"><div class="body"><div class="txt"><span class="badge">핵심</span><b>발열</b> — 충전·최대풍량 10분 후 손 체감 비정상 과열 없음</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+
+  <div class="note">⏱️ 발열·지속은 시간이 걸리니 — 시작할 때 충전+최대풍량으로 <b>걸어두고</b> 마지막에 만져서 확인하면 흐름이 안 끊겨요.</div>
+
+  <div class="sample-tag">— 샘플 1~2개만 —</div>
+  <div class="item" data-id="s5a"><div class="body"><div class="txt"><b>배터리 지속</b> — 최대풍량 만충 가동 → 3시간 전후 유지 (스톱워치)</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+
+</main>
+
+<div class="toolbar">
+  <div class="meta">탭하면 OK / NG 토글 · 자동저장됨</div>
+  <button class="reset" id="resetBtn">↺ 다음 개체</button>
+</div>
+
+<div class="modal-ov" id="modalOv">
+  <div class="modal">
+    <div class="mtitle">다음 개체로?</div>
+    <div class="mtext">이 개체의 체크를 모두 지웁니다.</div>
+    <div class="mbtns">
+      <button class="mbtn cancel" id="mCancel">취소</button>
+      <button class="mbtn confirm" id="mConfirm">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="scan-ov" id="scanOv">
+  <div class="scan-head"><span class="t">📷 바코드 스캔</span><button class="x" id="scanClose">✕</button></div>
+  <div id="reader"></div>
+  <div class="scan-tip">상자 바코드를 화면 안에 맞춰주세요</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+(function(){
+  var KEY='kaiper_qc_v1';
+  var items=[].slice.call(document.querySelectorAll('.item'));
+  var state={};
+  try{ state=JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ state={}; }
+
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){} }
+  function render(){
+    var done=0, critNG=false;
+    items.forEach(function(it){
+      var id=it.getAttribute('data-id');
+      var s=state[id]||'';
+      if(s){ it.setAttribute('data-state',s); done++; }
+      else { it.removeAttribute('data-state'); }
+      if(s==='ng' && it.classList.contains('crit')) critNG=true;
+    });
+    var total=items.length;
+    document.getElementById('pcount').textContent=done+' / '+total;
+    document.getElementById('barfill').style.width=(total? (done/total*100):0)+'%';
+    document.getElementById('critBanner').classList.toggle('show',critNG);
+  }
+  function setState(id,val){
+    state[id]=(state[id]===val)?'':val; // 같은 버튼 다시 누르면 해제
+    save(); render();
+  }
+  items.forEach(function(it){
+    var id=it.getAttribute('data-id');
+    it.querySelector('.btn.ok').addEventListener('click',function(e){e.stopPropagation();setState(id,'ok');});
+    it.querySelector('.btn.ng').addEventListener('click',function(e){e.stopPropagation();setState(id,'ng');});
+    it.addEventListener('click',function(){ setState(id,'ok'); }); // 행 탭 = OK 토글
+  });
+  var serialInput=document.getElementById('serialInput');
+  serialInput.value=state['_serial']||'';
+  serialInput.addEventListener('input',function(){ state['_serial']=serialInput.value; save(); });
+
+  // 바코드 스캐너
+  var scanOv=document.getElementById('scanOv'), html5qr=null;
+  function fmtList(){
+    if(!window.Html5QrcodeSupportedFormats) return undefined;
+    var F=Html5QrcodeSupportedFormats;
+    return [F.CODE_128,F.CODE_39,F.CODE_93,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.ITF,F.CODABAR,F.QR_CODE];
+  }
+  function startScan(){
+    if(!window.Html5Qrcode){ alert('스캐너 로딩 실패 — 인터넷 연결을 확인하세요.'); return; }
+    scanOv.classList.add('show');
+    html5qr=new Html5Qrcode("reader",{formatsToSupport:fmtList(),verbose:false});
+    html5qr.start({facingMode:"environment"},{fps:10,qrbox:{width:300,height:170}},
+      function(text){
+        serialInput.value=text; state['_serial']=text; save();
+        if(navigator.vibrate) navigator.vibrate(90);
+        stopScan();
+      }, function(){}
+    ).catch(function(e){ alert('카메라를 열 수 없어요: '+e); scanOv.classList.remove('show'); });
+  }
+  function stopScan(){
+    if(html5qr){ html5qr.stop().then(function(){ html5qr.clear(); html5qr=null; }).catch(function(){ html5qr=null; }); }
+    scanOv.classList.remove('show');
+  }
+  document.getElementById('scanBtn').addEventListener('click',startScan);
+  document.getElementById('scanClose').addEventListener('click',stopScan);
+
+  var ov=document.getElementById('modalOv');
+  document.getElementById('resetBtn').addEventListener('click',function(){ ov.classList.add('show'); });
+  document.getElementById('mCancel').addEventListener('click',function(){ ov.classList.remove('show'); });
+  ov.addEventListener('click',function(e){ if(e.target===ov) ov.classList.remove('show'); });
+  document.getElementById('mConfirm').addEventListener('click',function(){
+    state={}; save(); render(); serialInput.value=''; ov.classList.remove('show'); window.scrollTo({top:0,behavior:'smooth'});
+  });
+  render();
+})();
+</script>
+</body>
+</html>
