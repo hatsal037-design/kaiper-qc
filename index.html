@@ -119,6 +119,11 @@
   .name-box input:focus{outline:none;border-color:var(--accent);}
   .name-box button{width:100%;height:56px;background:#111418;color:#fff;border:none;border-radius:13px;font-size:18px;font-weight:800;cursor:pointer;}
   .name-box button:active{transform:scale(.98);}
+  .sync{font-weight:700;} .sync.ok{color:#9aa3ad;} .sync.pend{color:#d98a00;}
+  .rec-tabs{display:flex;gap:8px;padding:10px 12px 0;}
+  .rtab{flex:1;background:#eceef1;color:#555;border:none;border-radius:10px 10px 0 0;padding:11px;font-weight:800;font-size:14px;cursor:pointer;border-bottom:3px solid transparent;}
+  .rtab.active{background:#fff;color:var(--accent);border-bottom-color:var(--accent);}
+  .rtab em{font-style:normal;color:#9aa3ad;font-size:12px;} .rtab.active em{color:var(--accent);}
 </style>
 </head>
 <body>
@@ -185,13 +190,17 @@
 </main>
 
 <div class="toolbar">
-  <div class="meta">기록 <b id="recBadge">0</b>건 · 자동저장</div>
+  <div class="meta">기록 <b id="recBadge">0</b> · <span id="syncStat" class="sync ok">☁ 동기화됨</span></div>
   <button class="recbtn" id="recBtn">📋 기록</button>
   <button class="reset" id="resetBtn">💾 저장▶다음</button>
 </div>
 
 <div class="rec-ov" id="recOv">
-  <div class="rec-head"><span class="t">검사 기록 <em id="recCount">0</em>건</span><button class="x" id="recClose">✕</button></div>
+  <div class="rec-head"><span class="t">검사 기록</span><button class="x" id="recClose">✕</button></div>
+  <div class="rec-tabs">
+    <button class="rtab active" id="tabLocal">이 기기 <em>0</em></button>
+    <button class="rtab" id="tabCloud">전체 합본 <em>·</em></button>
+  </div>
   <div class="rec-actions">
     <button id="exportBtn" class="rec-act primary">⬇ 엑셀(CSV) 내보내기</button>
     <button id="clearRecBtn" class="rec-act danger">전체 삭제</button>
@@ -309,12 +318,25 @@
   setInspector(inspector);
   if(!inspector){ openName(); }
 
-  // 기록 저장소
-  var RKEY='kaiper_qc_records', records=[];
+  // 기록 저장소 + 클라우드 합본
+  var CLOUD='https://kvdb.io/3YEp7XsuxXVRThbAnD6skw';
+  var RKEY='kaiper_qc_records', PKEY='kaiper_qc_pending';
+  var records=[], pending=[], cloudRecords=[], viewMode='local';
   try{ records=JSON.parse(localStorage.getItem(RKEY))||[]; }catch(e){ records=[]; }
+  try{ pending=JSON.parse(localStorage.getItem(PKEY))||[]; }catch(e){ pending=[]; }
+  function updateSync(){ var el=document.getElementById('syncStat'); if(!el) return;
+    el.textContent = pending.length ? ('⟳ 미전송 '+pending.length) : '☁ 동기화됨';
+    el.className = 'sync '+(pending.length?'pend':'ok'); }
   function saveRecords(){ try{ localStorage.setItem(RKEY,JSON.stringify(records)); }catch(e){}
-    document.getElementById('recBadge').textContent=records.length;
-    document.getElementById('recCount').textContent=records.length; }
+    document.getElementById('recBadge').textContent=records.length; updateSync(); }
+  function savePending(){ try{ localStorage.setItem(PKEY,JSON.stringify(pending)); }catch(e){} updateSync(); }
+  function uid(){ return 'rec_'+Date.now()+'_'+Math.floor(Math.random()*1e6); }
+  var flushing=false;
+  function flushPending(){ if(flushing || !pending.length) return; flushing=true;
+    var rec=pending[0];
+    fetch(CLOUD+'/'+rec.id, {method:'POST', body:JSON.stringify(rec)}).then(function(r){ flushing=false;
+      if(r && r.ok){ pending.shift(); savePending(); flushPending(); } })
+      .catch(function(){ flushing=false; }); }
 
   function saveNext(){
     var ng=[], ok=0;
@@ -325,59 +347,84 @@
     var d=new Date();
     var dt=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
     var verdict = ng.length ? 'NG' : (ok===items.length ? 'PASS' : '미완료');
-    records.push({inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()});
-    saveRecords();
+    var rec={id:uid(), inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()};
+    records.push(rec); saveRecords();
+    pending.push(rec); savePending(); flushPending();
     state={}; save(); render(); serialInput.value=''; memoInput.value='';
     window.scrollTo({top:0,behavior:'smooth'});
     toast('✓ 저장됨 · 총 '+records.length+'건');
   }
   document.getElementById('resetBtn').addEventListener('click',saveNext);
 
-  // 기록 보기
+  // 기록 보기 (이 기기 / 전체 합본)
   var recOv=document.getElementById('recOv');
+  function curList(){ return viewMode==='cloud' ? cloudRecords : records; }
   function renderRecords(){
-    if(!records.length){ document.getElementById('recList').innerHTML='<div class="rec-empty">아직 저장된 기록이 없어요.</div>'; return; }
+    var list=curList(), local=(viewMode==='local');
+    document.getElementById('clearRecBtn').style.display = local ? '' : 'none';
+    if(!list.length){ document.getElementById('recList').innerHTML='<div class="rec-empty">'+(viewMode==='cloud'?'합본 데이터가 없어요.':'아직 저장된 기록이 없어요.')+'</div>'; return; }
     var h='';
-    records.forEach(function(r,i){
+    list.forEach(function(r,i){
       var cls=r.verdict==='PASS'?'pass':(r.verdict==='NG'?'ng':'inc');
       h+='<div class="rec-row">'
-        +'<div class="rec-top"><b>'+(esc(r.serial)||'(시리얼 없음)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
-        +'<div class="rec-meta">'+r.dt+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
-        +(r.ng.length?'<div class="rec-ng">NG: '+esc(r.ng.join(', '))+'</div>':'')
+        +'<div class="rec-top"><b>'+(esc(r.serial)||'(시리얼 없음)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng&&r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
+        +'<div class="rec-meta">'+esc(r.dt||'')+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
+        +(r.ng&&r.ng.length?'<div class="rec-ng">NG: '+esc(r.ng.join(', '))+'</div>':'')
         +(r.memo?'<div class="rec-memo">'+esc(r.memo)+'</div>':'')
-        +'<div class="rec-foot"><button class="rec-del" data-i="'+i+'">삭제</button></div>'
+        +(local?'<div class="rec-foot"><button class="rec-del" data-i="'+i+'">삭제</button></div>':'')
         +'</div>';
     });
     document.getElementById('recList').innerHTML=h;
   }
-  document.getElementById('recBtn').addEventListener('click',function(){ renderRecords(); recOv.classList.add('show'); });
+  function setTab(mode){
+    viewMode=mode;
+    document.getElementById('tabLocal').classList.toggle('active',mode==='local');
+    document.getElementById('tabCloud').classList.toggle('active',mode==='cloud');
+    document.getElementById('tabLocal').querySelector('em').textContent=records.length;
+    if(mode==='cloud'){
+      document.getElementById('recList').innerHTML='<div class="rec-empty">불러오는 중…</div>';
+      flushPending();
+      fetch(CLOUD+'/?prefix=rec_&values=true&format=json').then(function(r){return r.json();}).then(function(arr){
+        cloudRecords=arr.map(function(kv){ try{return JSON.parse(kv[1]);}catch(e){return null;} }).filter(Boolean);
+        cloudRecords.sort(function(a,b){ var x=a.dt||'',y=b.dt||''; return x<y?-1:(x>y?1:0); });
+        document.getElementById('tabCloud').querySelector('em').textContent=cloudRecords.length;
+        renderRecords();
+      }).catch(function(){ document.getElementById('recList').innerHTML='<div class="rec-empty">합본을 불러오지 못했어요. 인터넷 확인 후 다시 시도하세요.</div>'; });
+    } else { renderRecords(); }
+  }
+  document.getElementById('recBtn').addEventListener('click',function(){ setTab('local'); recOv.classList.add('show'); });
   document.getElementById('recClose').addEventListener('click',function(){ recOv.classList.remove('show'); });
+  document.getElementById('tabLocal').addEventListener('click',function(){ setTab('local'); });
+  document.getElementById('tabCloud').addEventListener('click',function(){ setTab('cloud'); });
   document.getElementById('recList').addEventListener('click',function(e){
     var b=e.target.closest('.rec-del'); if(!b) return;
     var i=+b.getAttribute('data-i');
-    if(confirm('이 기록을 삭제할까요?')){ records.splice(i,1); saveRecords(); renderRecords(); }
+    if(confirm('이 기록을 삭제할까요? (이 기기 목록만 삭제, 합본은 유지)')){ records.splice(i,1); saveRecords(); renderRecords(); }
   });
   document.getElementById('clearRecBtn').addEventListener('click',function(){
     if(!records.length) return;
-    if(confirm('저장된 '+records.length+'건 기록을 전부 삭제할까요?')){ records=[]; saveRecords(); renderRecords(); }
+    if(confirm('이 기기 '+records.length+'건을 전부 삭제할까요? (합본 클라우드는 유지)')){ records=[]; saveRecords(); renderRecords(); }
   });
 
-  // 엑셀(CSV) 내보내기
+  // 엑셀(CSV) 내보내기 — 현재 탭 기준 ('전체 합본' 탭이면 4명 통합본)
   document.getElementById('exportBtn').addEventListener('click',function(){
-    if(!records.length){ toast('내보낼 기록이 없어요'); return; }
+    var list=curList();
+    if(!list.length){ toast('내보낼 기록이 없어요'); return; }
     var rows=[['번호','검사자','시리얼','검사일시','판정','NG건수','NG항목','비고']];
-    records.forEach(function(r,i){ rows.push([i+1, r.inspector||'', r.serial, r.dt, r.verdict, r.ng.length, r.ng.join('; '), r.memo]); });
+    list.forEach(function(r,i){ rows.push([i+1, r.inspector||'', r.serial||'', r.dt||'', r.verdict||'', (r.ng||[]).length, (r.ng||[]).join('; '), r.memo||'']); });
     var csv=rows.map(function(row){ return row.map(function(c){ c=(''+c).replace(/"/g,'""');
       return /[",\n\r]/.test(c)?'"'+c+'"':c; }).join(','); }).join('\r\n');
     var blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8;'});
-    var d=new Date(), fn='KAIPER_QC_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.csv';
+    var d=new Date(), tag=(viewMode==='cloud'?'합본':'이기기');
+    var fn='KAIPER_QC_'+tag+'_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.csv';
     var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn;
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
-    toast('⬇ '+records.length+'건 내보냄');
+    toast('⬇ '+list.length+'건 내보냄 ('+tag+')');
   });
 
   saveRecords();
+  flushPending();
   render();
 })();
 </script>
