@@ -146,7 +146,7 @@
       <input id="serialInput" type="text" inputmode="text" autocomplete="off" placeholder="바코드 스캔 / 직접 입력">
       <button id="scanBtn" class="scanbtn">📷 스캔</button>
     </div>
-    <div class="hint">📷 <b>스캔</b>을 눌러 상자 바코드를 비추면 자동 입력돼요.</div>
+    <div class="hint">🍏 <b>아이폰 추천</b>: 입력칸 한 번 탭 → 키보드의 <b>텍스트 스캔(📷)</b> → <b>바코드 아래 숫자</b>를 찍으면 정확히 입력돼요.<br>📷 <b>스캔</b> 버튼(바코드 직접 인식)은 보조로 — 안 잡히면 텍스트 스캔 쓰세요.</div>
   </div>
 
   <div class="step">STEP 1 · 📦 박스 열기</div>
@@ -281,8 +281,8 @@
     scanOv.classList.add('show');
     html5qr=new Html5Qrcode("reader",{ formatsToSupport:fmtList(), experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false });
     var box=function(vw){ var w=Math.min(vw*0.92,380); return {width:Math.round(w), height:Math.round(Math.max(120,w*0.5))}; };
-    var cam={ facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}, advanced:[{focusMode:"continuous"}] };
-    html5qr.start(cam, {fps:15, qrbox:box},
+    var vc={ facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}, advanced:[{focusMode:"continuous"}] };
+    html5qr.start({facingMode:"environment"}, {fps:15, qrbox:box, videoConstraints:vc},
       function(text){
         serialInput.value=text; state['_serial']=text; save();
         if(navigator.vibrate) navigator.vibrate(90);
