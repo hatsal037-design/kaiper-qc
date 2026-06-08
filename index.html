@@ -359,7 +359,8 @@
   function saveRecords(){ try{ localStorage.setItem(RKEY,JSON.stringify(records)); }catch(e){}
     document.getElementById('recBadge').textContent=records.length; updateSync(); }
   function savePending(){ try{ localStorage.setItem(PKEY,JSON.stringify(pending)); }catch(e){} updateSync(); }
-  function uid(){ return 'rec_'+Date.now()+'_'+Math.floor(Math.random()*1e6); }
+  function recKey(serial){ var s=(serial||'').trim().replace(/[^A-Za-z0-9가-힣]/g,'');
+    return s ? ('rec_s_'+s) : ('rec_u_'+Date.now()+'_'+Math.floor(Math.random()*1e6)); }
   var flushing=false;
   function flushPending(){ if(flushing || !pending.length) return; flushing=true;
     var rec=pending[0];
@@ -376,7 +377,8 @@
     var d=new Date();
     var dt=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
     var verdict = ng.length ? 'NG' : (ok===items.length ? 'PASS' : '미완료');
-    var rec={id:uid(), inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()};
+    var rec={id:recKey(serial), inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()};
+    if(serial){ records=records.filter(function(r){ return (r.serial||'').trim()!==serial; }); } // 같은 시리얼 = 최신으로 교체
     records.push(rec); saveRecords();
     pending.push(rec); savePending(); flushPending();
     state={}; save(); render(); serialInput.value=''; memoInput.value='';
@@ -414,7 +416,12 @@
       document.getElementById('recList').innerHTML='<div class="rec-empty">불러오는 중…</div>';
       flushPending();
       fetch(CLOUD+'/?prefix=rec_&values=true&format=json').then(function(r){return r.json();}).then(function(arr){
-        cloudRecords=arr.map(function(kv){ try{return JSON.parse(kv[1]);}catch(e){return null;} }).filter(Boolean);
+        var raw=arr.map(function(kv){ try{return JSON.parse(kv[1]);}catch(e){return null;} }).filter(Boolean);
+        var map={}, ui=0;  // 같은 시리얼은 최신(dt 큰 것)만 남김
+        raw.forEach(function(r){ var s=(r.serial||'').trim();
+          if(!s){ map['__u'+(ui++)]=r; return; }
+          if(!map[s] || (''+(r.dt||'')) >= (''+(map[s].dt||''))) map[s]=r; });
+        cloudRecords=Object.keys(map).map(function(k){return map[k];});
         cloudRecords.sort(function(a,b){ var x=a.dt||'',y=b.dt||''; return x<y?-1:(x>y?1:0); });
         document.getElementById('tabCloud').querySelector('em').textContent=cloudRecords.length;
         renderRecords();
