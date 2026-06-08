@@ -4,22 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>KAIPER Air Dock 입고 QC</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
-  :root{
-    --bg:#f4f5f7; --card:#fff; --ink:#1a1d22; --sub:#6b7280;
-    --line:#e5e7eb; --ok:#16a34a; --okbg:#e9f7ef; --ng:#dc2626; --ngbg:#fdecec;
-    --crit:#b45309; --critbg:#fff7ed; --accent:#1763a6;
+  :root{ /* KAIPER 브랜드 컬러 */
+    --bg:#ededf5; --card:#ffffff; --ink:#14161b; --sub:#6a6e77;
+    --line:#ced0db; --ok:#15a83c; --okbg:#e8f9ed; --ng:#ee3a4d; --ngbg:#fdebed;
+    --crit:#ff6428; --critbg:#fff1ea; --accent:#0096c7; --glow:#00befa; --dark:#000000;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;
+  body{margin:0;font-family:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
     background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45;padding-bottom:90px;}
-  header{position:sticky;top:0;z-index:10;background:#111418;color:#fff;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0));
+  header{position:sticky;top:0;z-index:10;background:#000000;color:#fff;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0));
     box-shadow:0 2px 10px rgba(0,0,0,.18);}
-  .htitle{font-size:18px;font-weight:800;letter-spacing:.3px;}
+  .htitle{display:flex;align-items:center;gap:10px;}
+  .klogo{height:15px;width:auto;display:inline-block;}
+  .klogo polygon,.klogo rect,.klogo path{fill:#fff;} .klogo .st0{fill:#000;}
+  .hlabel{font-size:14px;font-weight:600;letter-spacing:.3px;color:#aeb6c0;border-left:1px solid #3e4149;padding-left:10px;}
   .hsub{font-size:12px;color:#aab2bd;margin-top:3px;line-height:1.4;}
   .progwrap{display:flex;align-items:center;gap:10px;margin-top:10px;}
-  .bar{flex:1;height:8px;background:#2a2f36;border-radius:99px;overflow:hidden;}
-  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3b82f6,#16a34a);transition:width .25s;}
+  .bar{flex:1;height:8px;background:#3e4149;border-radius:99px;overflow:hidden;}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--glow),#15a83c);transition:width .25s;}
   .pcount{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;min-width:62px;text-align:right;}
   .crit-banner{display:none;margin-top:10px;background:var(--ng);color:#fff;font-weight:700;font-size:13px;
     padding:8px 12px;border-radius:8px;}
@@ -50,7 +54,7 @@
     padding:10px 14px calc(10px + env(safe-area-inset-bottom,0));display:flex;gap:10px;align-items:center;
     box-shadow:0 -2px 12px rgba(0,0,0,.06);}
   .meta{flex:1;font-size:12px;color:var(--sub);}
-  .reset{background:#111418;color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:10px;cursor:pointer;}
+  .reset{background:#000000;color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:10px;cursor:pointer;}
   .reset:active{transform:scale(.97);}
   .modal-ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:24px;}
   .modal-ov.show{display:flex;}
@@ -60,7 +64,7 @@
   .modal .mbtns{display:flex;gap:12px;}
   .modal .mbtn{flex:1;height:64px;border-radius:14px;font-size:19px;font-weight:800;cursor:pointer;border:none;}
   .modal .mbtn.cancel{background:#eceef1;color:#3a3f46;}
-  .modal .mbtn.confirm{background:#111418;color:#fff;}
+  .modal .mbtn.confirm{background:#000000;color:#fff;}
   .modal .mbtn:active{transform:scale(.97);}
   .serial{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:4px 0 8px;}
   .serial label{display:block;font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.4px;}
@@ -74,9 +78,9 @@
   .scanbtn:active{transform:scale(.97);}
   .scan-ov{position:fixed;inset:0;z-index:60;background:#000;display:none;flex-direction:column;}
   .scan-ov.show{display:flex;}
-  .scan-head{padding:14px 16px calc(14px + env(safe-area-inset-top,0));color:#fff;display:flex;justify-content:space-between;align-items:center;background:#111418;}
+  .scan-head{padding:14px 16px calc(14px + env(safe-area-inset-top,0));color:#fff;display:flex;justify-content:space-between;align-items:center;background:#000000;}
   .scan-head .t{font-weight:800;font-size:16px;}
-  .scan-head .x{background:#2a2f36;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:11px;}
+  .scan-head .x{background:#3e4149;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:11px;}
   #reader{flex:1;width:100%;overflow:hidden;}
   .scan-tip{position:absolute;bottom:36px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 4px #000;padding:0 20px;}
   #zoomSlider{position:absolute;bottom:78px;left:24px;right:24px;width:auto;height:30px;accent-color:#1763a6;z-index:3;}
@@ -84,13 +88,13 @@
   .memo label{display:block;font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.4px;}
   .memo textarea{width:100%;font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;font-family:inherit;}
   .memo textarea:focus{outline:none;border-color:var(--accent);}
-  .recbtn{background:#eceef1;color:#2a2f36;border:none;font-weight:800;font-size:14px;padding:11px 14px;border-radius:10px;cursor:pointer;flex-shrink:0;}
+  .recbtn{background:#eceef1;color:#3e4149;border:none;font-weight:800;font-size:14px;padding:11px 14px;border-radius:10px;cursor:pointer;flex-shrink:0;}
   .recbtn:active{transform:scale(.97);}
   .rec-ov{position:fixed;inset:0;z-index:55;background:var(--bg);display:none;flex-direction:column;}
   .rec-ov.show{display:flex;}
-  .rec-head{padding:14px 16px calc(14px + env(safe-area-inset-top,0));background:#111418;color:#fff;display:flex;justify-content:space-between;align-items:center;}
+  .rec-head{padding:14px 16px calc(14px + env(safe-area-inset-top,0));background:#000000;color:#fff;display:flex;justify-content:space-between;align-items:center;}
   .rec-head .t{font-weight:800;font-size:16px;} .rec-head .t em{font-style:normal;color:#7fd1a3;}
-  .rec-head .x{background:#2a2f36;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:11px;}
+  .rec-head .x{background:#3e4149;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:11px;}
   .rec-actions{display:flex;gap:10px;padding:12px;}
   .rec-act{height:48px;border:none;border-radius:11px;font-weight:800;font-size:15px;cursor:pointer;}
   .rec-act.primary{flex:1;background:var(--accent);color:#fff;}
@@ -112,9 +116,9 @@
   .rec-memo{font-size:13px;color:#444;margin-top:5px;background:#f7f8fa;border-radius:7px;padding:6px 8px;white-space:pre-wrap;}
   .rec-foot{text-align:right;margin-top:6px;}
   .rec-del{background:none;border:none;color:#c33;font-size:12px;font-weight:700;cursor:pointer;}
-  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);z-index:70;background:#111418;color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 6px 20px rgba(0,0,0,.3);}
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);z-index:70;background:#000000;color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 6px 20px rgba(0,0,0,.3);}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .who{display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#1f242b;color:#cdd5df;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;cursor:pointer;}
+  .who{display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#3e4149;color:#cdd5df;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;cursor:pointer;}
   .who b{color:#fff;}
   .name-ov{position:fixed;inset:0;z-index:80;background:rgba(10,12,15,.97);display:none;align-items:center;justify-content:center;padding:24px;}
   .name-ov.show{display:flex;}
@@ -123,7 +127,7 @@
   .name-box .nb-sub{font-size:14px;color:var(--sub);margin:6px 0 18px;}
   .name-box input{width:100%;font-size:18px;font-weight:700;padding:14px;border:1.5px solid var(--line);border-radius:12px;text-align:center;margin-bottom:14px;}
   .name-box input:focus{outline:none;border-color:var(--accent);}
-  .name-box button{width:100%;height:56px;background:#111418;color:#fff;border:none;border-radius:13px;font-size:18px;font-weight:800;cursor:pointer;}
+  .name-box button{width:100%;height:56px;background:#000000;color:#fff;border:none;border-radius:13px;font-size:18px;font-weight:800;cursor:pointer;}
   .name-box button:active{transform:scale(.98);}
   .sync{font-weight:700;} .sync.ok{color:#9aa3ad;} .sync.pend{color:#d98a00;}
   .rec-tabs{display:flex;gap:8px;padding:10px 12px 0;}
@@ -134,7 +138,7 @@
 </head>
 <body>
 <header>
-  <div class="htitle">KAIPER Air Dock · 입고 QC</div>
+  <div class="htitle"><svg class="klogo" viewBox="0 0 72.03 11.34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KAIPER"><polygon points="47.03 0 47.03 11.34 57.67 11.34 57.67 8.74 50.04 8.74 50.04 2.6 57.67 2.6 57.67 0 47.03 0"/><rect x="51.55" y="4.41" width="6.12" height="2.53"/><rect x="28.33" y="0" width="3.02" height="11.34"/><rect y="0" width="3.02" height="11.34"/><polygon points="22.29 0 17.61 0 12.76 11.34 16.1 11.34 17.03 9.04 22.87 9.04 23.8 11.34 27.14 11.34 22.29 0"/><polygon class="st0" points="20.23 2.52 21.87 6.58 18.02 6.58 19.67 2.52 20.23 2.52"/><polygon points="12.1 11.34 7.81 11.34 3.5 6.39 7.69 6.39 12.1 11.34"/><polygon points="12.1 0 7.81 0 3.5 4.95 7.69 4.95 12.1 0"/><path d="M72.03,11.34l-2.83-3.99c1.43-.54,2.45-1.93,2.45-3.55h0C71.65,1.7,69.95,0,67.86,0h-7.91v11.34h3.02v-3.74h2.98l2.47,3.74h3.63Z"/><path class="st0" d="M62.96,2.65h4.41c.7,0,1.26.57,1.26,1.26s-.57,1.26-1.26,1.26h-4.41v-2.53Z"/><path d="M33.66,0v11.34h3.02v-3.52h4.78c2.16,0,3.91-1.75,3.91-3.91h0C45.37,1.75,43.62,0,41.46,0h-7.8Z"/><path class="st0" d="M36.68,5.17v-2.51h4.42c.69,0,1.26.56,1.26,1.26h0c0,.69-.56,1.26-1.26,1.26h-4.42Z"/></svg><span class="hlabel">입고 QC</span></div>
   <div class="hsub">표본: 카톤 균등 · 준비물: USB-C 충전기, 비교용 정상품 1개</div>
   <div class="who" id="whoChip">검사자 <b id="whoName">—</b> · 변경</div>
   <div class="progwrap">
