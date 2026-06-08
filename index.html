@@ -108,12 +108,24 @@
   .rec-del{background:none;border:none;color:#c33;font-size:12px;font-weight:700;cursor:pointer;}
   .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);z-index:70;background:#111418;color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 6px 20px rgba(0,0,0,.3);}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .who{display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#1f242b;color:#cdd5df;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;cursor:pointer;}
+  .who b{color:#fff;}
+  .name-ov{position:fixed;inset:0;z-index:80;background:rgba(10,12,15,.97);display:none;align-items:center;justify-content:center;padding:24px;}
+  .name-ov.show{display:flex;}
+  .name-box{background:#fff;border-radius:18px;max-width:380px;width:100%;padding:26px 22px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.4);}
+  .name-box .nb-title{font-size:20px;font-weight:800;}
+  .name-box .nb-sub{font-size:14px;color:var(--sub);margin:6px 0 18px;}
+  .name-box input{width:100%;font-size:18px;font-weight:700;padding:14px;border:1.5px solid var(--line);border-radius:12px;text-align:center;margin-bottom:14px;}
+  .name-box input:focus{outline:none;border-color:var(--accent);}
+  .name-box button{width:100%;height:56px;background:#111418;color:#fff;border:none;border-radius:13px;font-size:18px;font-weight:800;cursor:pointer;}
+  .name-box button:active{transform:scale(.98);}
 </style>
 </head>
 <body>
 <header>
   <div class="htitle">KAIPER Air Dock · 입고 QC</div>
   <div class="hsub">표본: 카톤 균등 · 준비물: USB-C 충전기, 비교용 정상품 1개</div>
+  <div class="who" id="whoChip">검사자 <b id="whoName">—</b> · 변경</div>
   <div class="progwrap">
     <div class="bar"><i id="barfill"></i></div>
     <div class="pcount" id="pcount">0 / 0</div>
@@ -188,6 +200,15 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="name-ov" id="nameOv">
+  <div class="name-box">
+    <div class="nb-title">KAIPER 입고 QC</div>
+    <div class="nb-sub">검사자 이름을 입력하고 시작하세요</div>
+    <input id="nameInput" type="text" autocomplete="off" placeholder="검사자 이름">
+    <button id="nameStart">시작</button>
+  </div>
+</div>
 
 <div class="scan-ov" id="scanOv">
   <div class="scan-head"><span class="t">📷 바코드 스캔</span><button class="x" id="scanClose">✕</button></div>
@@ -273,6 +294,21 @@
     return t.split('—')[0].trim(); }
   function esc(s){ return (''+(s||'')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+  // 검사자
+  var IKEY='kaiper_qc_inspector';
+  var inspector=localStorage.getItem(IKEY)||'';
+  var nameOv=document.getElementById('nameOv'), nameInput=document.getElementById('nameInput'), whoName=document.getElementById('whoName');
+  function setInspector(n){ inspector=n; try{ localStorage.setItem(IKEY,n); }catch(e){} whoName.textContent=n||'—'; }
+  function openName(){ nameInput.value=inspector; nameOv.classList.add('show'); setTimeout(function(){ try{nameInput.focus();}catch(e){} },60); }
+  document.getElementById('nameStart').addEventListener('click',function(){
+    var n=(nameInput.value||'').trim(); if(!n){ nameInput.focus(); return; }
+    setInspector(n); nameOv.classList.remove('show');
+  });
+  nameInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ document.getElementById('nameStart').click(); } });
+  document.getElementById('whoChip').addEventListener('click',openName);
+  setInspector(inspector);
+  if(!inspector){ openName(); }
+
   // 기록 저장소
   var RKEY='kaiper_qc_records', records=[];
   try{ records=JSON.parse(localStorage.getItem(RKEY))||[]; }catch(e){ records=[]; }
@@ -289,7 +325,7 @@
     var d=new Date();
     var dt=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
     var verdict = ng.length ? 'NG' : (ok===items.length ? 'PASS' : '미완료');
-    records.push({serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()});
+    records.push({inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()});
     saveRecords();
     state={}; save(); render(); serialInput.value=''; memoInput.value='';
     window.scrollTo({top:0,behavior:'smooth'});
@@ -306,7 +342,7 @@
       var cls=r.verdict==='PASS'?'pass':(r.verdict==='NG'?'ng':'inc');
       h+='<div class="rec-row">'
         +'<div class="rec-top"><b>'+(esc(r.serial)||'(시리얼 없음)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
-        +'<div class="rec-meta">'+r.dt+'</div>'
+        +'<div class="rec-meta">'+r.dt+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
         +(r.ng.length?'<div class="rec-ng">NG: '+esc(r.ng.join(', '))+'</div>':'')
         +(r.memo?'<div class="rec-memo">'+esc(r.memo)+'</div>':'')
         +'<div class="rec-foot"><button class="rec-del" data-i="'+i+'">삭제</button></div>'
@@ -329,8 +365,8 @@
   // 엑셀(CSV) 내보내기
   document.getElementById('exportBtn').addEventListener('click',function(){
     if(!records.length){ toast('내보낼 기록이 없어요'); return; }
-    var rows=[['번호','시리얼','검사일시','판정','NG건수','NG항목','비고']];
-    records.forEach(function(r,i){ rows.push([i+1, r.serial, r.dt, r.verdict, r.ng.length, r.ng.join('; '), r.memo]); });
+    var rows=[['번호','검사자','시리얼','검사일시','판정','NG건수','NG항목','비고']];
+    records.forEach(function(r,i){ rows.push([i+1, r.inspector||'', r.serial, r.dt, r.verdict, r.ng.length, r.ng.join('; '), r.memo]); });
     var csv=rows.map(function(row){ return row.map(function(c){ c=(''+c).replace(/"/g,'""');
       return /[",\n\r]/.test(c)?'"'+c+'"':c; }).join(','); }).join('\r\n');
     var blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8;'});
