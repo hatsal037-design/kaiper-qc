@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>KAIPER 출고 전 검사</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{ /* KAIPER 브랜드 컬러 */
+    --bg:#ffffff; --card:#ffffff; --ink:#14161b; --sub:#6a6e77;
+    --line:#ced0db; --ok:#15a83c; --okbg:#e8f9ed; --ng:#ee3a4d; --ngbg:#fdebed;
+    --crit:#ff6428; --critbg:#fff1ea; --accent:#0096c7; --glow:#00befa; --dark:#000000;
+    --hair:#eceef3;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45;padding-bottom:90px;word-break:keep-all;overflow-wrap:break-word;}
+  header{position:sticky;top:0;z-index:10;background:#000000;color:#fff;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0));
+    box-shadow:0 2px 10px rgba(0,0,0,.18);}
+  .htitle{display:flex;align-items:center;gap:10px;}
+  .klogo{height:15px;width:auto;display:inline-block;}
+  .klogo polygon,.klogo rect,.klogo path{fill:#fff;} .klogo .st0{fill:#000;}
+  .hlabel{font-size:14px;font-weight:600;letter-spacing:.3px;color:#aeb6c0;border-left:1px solid #3e4149;padding-left:10px;}
+  .hsub{font-size:12px;color:#aab2bd;margin-top:3px;line-height:1.4;}
+  .progwrap{display:flex;align-items:center;gap:10px;margin-top:10px;}
+  .bar{flex:1;height:8px;background:#3e4149;border-radius:99px;overflow:hidden;}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--glow),#15a83c);transition:width .25s;}
+  .pcount{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;min-width:62px;text-align:right;}
+  .crit-banner{display:none;margin-top:10px;background:var(--ng);color:#fff;font-weight:700;font-size:13px;
+    padding:8px 12px;border-radius:8px;}
+  .crit-banner.show{display:block;}
+  main{max-width:680px;margin:0 auto;padding:0 0 24px;}
+  .step{margin:14px 16px 4px;font-size:12px;font-weight:800;color:#000;letter-spacing:.5px;}
+  .step:first-child{margin-top:6px;}
+  .item{background:var(--card);border-bottom:1px solid var(--hair);min-height:66px;
+    display:flex;align-items:stretch;transition:background .15s;}
+  .item.crit{box-shadow:inset 3px 0 0 var(--crit);}
+  .item .body{flex:1;min-width:0;display:flex;align-items:center;padding:16px 14px 16px 16px;}
+  .item .txt{font-size:15px;font-weight:500;line-height:1.6;word-break:keep-all;overflow-wrap:break-word;}
+  .item .txt b{font-weight:500;}
+  .item .txt .code{color:var(--accent);font-weight:500;}
+  .item.crit .badge{display:inline-block;background:var(--critbg);color:var(--crit);font-size:10px;font-weight:700;
+    padding:1px 6px;margin-right:6px;vertical-align:1px;}
+  .btns{display:flex;flex-shrink:0;}
+  .btn{border:none;background:transparent;color:var(--sub);font-weight:700;font-size:13px;
+    width:56px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .btn:active{background:rgba(0,0,0,.04);}
+  .item[data-state="ok"] .btn.ok{background:#1c9c4a;color:#fff;}
+  .item[data-state="ng"] .btn.ng{background:#e2641c;color:#fff;}
+  .note{background:var(--card);border-bottom:1px solid var(--hair);padding:12px 16px;margin:0;
+    font-size:13px;color:var(--sub);display:flex;gap:8px;}
+  .note b{font-weight:600;color:var(--ink);}
+  .sample-tag{font-size:11px;color:var(--sub);font-weight:700;margin:18px 16px 4px;}
+  .toolbar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:#fff;border-top:1px solid var(--line);
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom,0));display:flex;gap:10px;align-items:center;
+    box-shadow:0 -2px 12px rgba(0,0,0,.06);}
+  .meta{flex:1;font-size:12px;color:var(--sub);}
+  .reset{background:#000000;color:#fff;border:none;font-weight:800;font-size:14px;padding:11px 16px;border-radius:0;cursor:pointer;}
+  .reset:active{transform:scale(.97);}
+  .modal-ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:24px;}
+  .modal-ov.show{display:flex;}
+  .modal{background:#fff;border-radius:18px;max-width:400px;width:100%;padding:24px 20px 20px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.35);}
+  .modal .mtitle{font-size:19px;font-weight:800;margin-bottom:6px;}
+  .modal .mtext{font-size:14px;color:var(--sub);margin-bottom:20px;line-height:1.5;}
+  .modal .mbtns{display:flex;gap:12px;}
+  .modal .mbtn{flex:1;height:64px;border-radius:14px;font-size:19px;font-weight:800;cursor:pointer;border:none;}
+  .modal .mbtn.cancel{background:#eceef1;color:#3a3f46;}
+  .modal .mbtn.confirm{background:#000000;color:#fff;}
+  .modal .mbtn:active{transform:scale(.97);}
+  .serial{background:var(--card);border-bottom:1px solid var(--hair);padding:14px 16px;}
+  .serial label{display:block;font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.4px;}
+  .serial input{width:100%;font-size:18px;font-weight:600;padding:12px;border:none;background:#ededf5;
+    font-variant-numeric:tabular-nums;letter-spacing:.5px;}
+  .serial input:focus{outline:none;}
+  .serial .hint{font-size:12px;color:var(--sub);margin-top:7px;line-height:1.45;}
+  .serial .srow{display:flex;gap:8px;}
+  .serial .srow input{flex:1;min-width:0;}
+  .scanbtn{flex-shrink:0;background:#000;color:#fff;border:none;font-weight:700;font-size:14px;padding:0 16px;cursor:pointer;}
+  .scanbtn:active{opacity:.85;}
+  .scan-ov{position:fixed;inset:0;z-index:60;background:#000;display:none;flex-direction:column;}
+  .scan-ov.show{display:flex;}
+  .scan-head{padding:14px 16px calc(14px + env(safe-area-inset-top,0));color:#fff;display:flex;justify-content:space-between;align-items:center;background:#000000;}
+  .scan-head .t{font-weight:800;font-size:16px;}
+  .scan-head .x{background:#3e4149;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:6px;}
+  #reader{flex:1;width:100%;overflow:hidden;}
+  .scan-tip{position:absolute;bottom:36px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 4px #000;padding:0 20px;}
+  #zoomSlider{position:absolute;bottom:78px;left:24px;right:24px;width:auto;height:30px;accent-color:#1763a6;z-index:3;}
+  .memo{background:#fffbe6;border-top:1px solid #f0e9c8;border-bottom:1px solid #f0e9c8;padding:14px 16px;margin-top:10px;}
+  .memo label{display:block;font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.4px;}
+  .memo textarea{width:100%;font-size:15px;padding:4px 0;border:none;background:transparent;resize:vertical;font-family:inherit;}
+  .memo textarea:focus{outline:none;}
+  .recbtn{background:#eceef1;color:#3e4149;border:none;font-weight:800;font-size:14px;padding:11px 14px;border-radius:0;cursor:pointer;flex-shrink:0;}
+  .recbtn:active{transform:scale(.97);}
+  .rec-ov{position:fixed;inset:0;z-index:55;background:var(--bg);display:none;flex-direction:column;}
+  .rec-ov.show{display:flex;}
+  .rec-head{padding:14px 16px calc(14px + env(safe-area-inset-top,0));background:#000000;color:#fff;display:flex;justify-content:space-between;align-items:center;}
+  .rec-head .t{font-weight:800;font-size:16px;} .rec-head .t em{font-style:normal;color:#7fd1a3;}
+  .rec-head .x{background:#3e4149;color:#fff;border:none;font-size:18px;font-weight:800;width:42px;height:42px;border-radius:6px;}
+  .rec-actions{display:flex;gap:10px;padding:12px;}
+  .rec-act{height:48px;border:none;border-radius:6px;font-weight:800;font-size:15px;cursor:pointer;}
+  .rec-act.primary{flex:1;background:var(--accent);color:#fff;}
+  .rec-act.danger{background:#fff;color:var(--ng);border:1.5px solid #f3c0c0;padding:0 16px;}
+  .rec-act.arch{background:#fff;color:#8a6d3b;border:1.5px solid #e8d9a8;padding:0 12px;}
+  .rec-act.arch.on{background:#fff7e6;border-color:#e0b85a;}
+  .rec-row.arch{opacity:.92;background:#fbf7ef;border-style:dashed;}
+  @keyframes flashpulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0);}50%{box-shadow:0 0 0 4px rgba(220,38,38,.55);}}
+  .item.flash{animation:flashpulse .7s ease-in-out 2;border-color:var(--ng);}
+  .rec-list{flex:1;overflow:auto;padding:0 12px 24px;}
+  .rec-empty{text-align:center;color:var(--sub);padding:40px 0;font-size:14px;}
+  .rec-row{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:8px 0;}
+  .rec-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .rec-top b{font-size:15px;font-variant-numeric:tabular-nums;}
+  .vd{font-size:12px;font-weight:800;padding:3px 9px;border-radius:7px;white-space:nowrap;}
+  .vd.pass{background:var(--okbg);color:var(--ok);} .vd.ng{background:var(--ngbg);color:var(--ng);} .vd.inc{background:#eef1f4;color:#6b7280;}
+  .rec-meta{font-size:12px;color:var(--sub);margin-top:4px;}
+  .rec-ng{font-size:13px;color:var(--ng);margin-top:6px;font-weight:600;}
+  .rec-memo{font-size:13px;color:#444;margin-top:5px;background:#f7f8fa;border-radius:7px;padding:6px 8px;white-space:pre-wrap;}
+  .rec-foot{text-align:right;margin-top:6px;}
+  .rec-del{background:none;border:none;color:#c33;font-size:12px;font-weight:700;cursor:pointer;}
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);z-index:70;background:#000000;color:#fff;font-weight:700;font-size:14px;padding:11px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 6px 20px rgba(0,0,0,.3);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .who{display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:#3e4149;color:#cdd5df;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;cursor:pointer;}
+  .who b{color:#fff;}
+  .name-ov{position:fixed;inset:0;z-index:80;background:rgba(10,12,15,.97);display:none;align-items:center;justify-content:center;padding:24px;}
+  .name-ov.show{display:flex;}
+  .name-box{background:#fff;border-radius:18px;max-width:380px;width:100%;padding:26px 22px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.4);}
+  .name-box .nb-title{font-size:20px;font-weight:800;}
+  .name-box .nb-sub{font-size:14px;color:var(--sub);margin:6px 0 18px;}
+  .name-box input{width:100%;font-size:18px;font-weight:700;padding:14px;border:1.5px solid var(--line);border-radius:8px;text-align:center;margin-bottom:14px;}
+  .name-box input:focus{outline:none;border-color:var(--accent);}
+  .name-box button{width:100%;height:56px;background:#000000;color:#fff;border:none;border-radius:13px;font-size:18px;font-weight:800;cursor:pointer;}
+  .name-box button:active{transform:scale(.98);}
+  .sync{font-weight:700;} .sync.ok{color:#9aa3ad;} .sync.pend{color:#d98a00;}
+  .rec-tabs{display:flex;gap:8px;padding:10px 12px 0;}
+  .rtab{flex:1;background:#eceef1;color:#555;border:none;border-radius:6px 10px 0 0;padding:11px;font-weight:800;font-size:14px;cursor:pointer;border-bottom:3px solid transparent;}
+  .rtab.active{background:#fff;color:var(--accent);border-bottom-color:var(--accent);}
+  .rtab em{font-style:normal;color:#9aa3ad;font-size:12px;} .rtab.active em{color:var(--accent);}
+</style>
+</head>
+<body>
+<header>
+  <div class="htitle"><svg class="klogo" viewBox="0 0 72.03 11.34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KAIPER"><polygon points="47.03 0 47.03 11.34 57.67 11.34 57.67 8.74 50.04 8.74 50.04 2.6 57.67 2.6 57.67 0 47.03 0"/><rect x="51.55" y="4.41" width="6.12" height="2.53"/><rect x="28.33" y="0" width="3.02" height="11.34"/><rect y="0" width="3.02" height="11.34"/><polygon points="22.29 0 17.61 0 12.76 11.34 16.1 11.34 17.03 9.04 22.87 9.04 23.8 11.34 27.14 11.34 22.29 0"/><polygon class="st0" points="20.23 2.52 21.87 6.58 18.02 6.58 19.67 2.52 20.23 2.52"/><polygon points="12.1 11.34 7.81 11.34 3.5 6.39 7.69 6.39 12.1 11.34"/><polygon points="12.1 0 7.81 0 3.5 4.95 7.69 4.95 12.1 0"/><path d="M72.03,11.34l-2.83-3.99c1.43-.54,2.45-1.93,2.45-3.55h0C71.65,1.7,69.95,0,67.86,0h-7.91v11.34h3.02v-3.74h2.98l2.47,3.74h3.63Z"/><path class="st0" d="M62.96,2.65h4.41c.7,0,1.26.57,1.26,1.26s-.57,1.26-1.26,1.26h-4.41v-2.53Z"/><path d="M33.66,0v11.34h3.02v-3.52h4.78c2.16,0,3.91-1.75,3.91-3.91h0C45.37,1.75,43.62,0,41.46,0h-7.8Z"/><path class="st0" d="M36.68,5.17v-2.51h4.42c.69,0,1.26.56,1.26,1.26h0c0,.69-.56,1.26-1.26,1.26h-4.42Z"/></svg><span class="hlabel">출고 전 검사</span></div>
+  <div class="hsub">표본: 카톤 균등 · 준비물: USB-C 충전기, 비교용 정상품 1개</div>
+  <div class="who" id="whoChip">검사자 <b id="whoName">—</b> · 변경</div>
+  <div class="progwrap">
+    <div class="bar"><i id="barfill"></i></div>
+    <div class="pcount" id="pcount">0 / 0</div>
+  </div>
+  <div class="crit-banner" id="critBanner">🚨 핵심 항목 NG 발생 — 로트 판정 검토</div>
+</header>
+
+<main id="list">
+
+  <div class="serial">
+    <label>개체 시리얼</label>
+    <div class="srow">
+      <input id="serialInput" type="text" inputmode="text" autocomplete="off" placeholder="예: KP05001QE0010105">
+      <button id="scanBtn" class="scanbtn">📷 스캔</button>
+    </div>
+    <div class="hint">🍏 <b>아이폰</b>: 입력칸 탭 → 키보드 <b>텍스트 스캔(📷)</b> → 스티커의 <b>“SN:” 줄</b>(KP…로 시작)을 찍으세요. <br>⚠️ <b>XU…·R-R-…</b> 인증번호는 시리얼 아님(전 제품 공통). 📷스캔 버튼은 보조.</div>
+  </div>
+
+  
+
+  
+
+  <div class="step">STEP 1 · 👀 손에 들고</div>
+  <div class="item" data-id="s3a"><div class="body"><div class="txt">외관 — 스크래치·찍힘·색차·단차·유격 없음 <b>(LED 위 긁힘은 보호필름 — 정상)</b></div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s3e"><div class="body"><div class="txt"><b>힌지</b> — 회전 부드럽·90도까지 / 헐겁거나 뻑뻑X / <b>끼걱(소음)·덜컥(유격) 없음</b> / 자세 유지</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+
+  <div class="step">STEP 2 · ⚙️ 켜서 돌려보기 (전원→풍속→충전)</div>
+  <div class="item" data-id="s4a"><div class="body"><div class="txt">전원/주기능 — 슬라이드로 켜짐·꺼짐, 바람 정상 토출</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s4c"><div class="body"><div class="txt">풍속 1~10단 — 슬라이더로 전 구간 부드럽게(걸림 없이) + 단계 올릴수록 세짐·먹통 없음</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s4d"><div class="body"><div class="txt">LCD — 풍속·배터리 표시·세그먼트 빠짐 없음 / 속도표기 1~10 (앞자리 0 없이·01·02 ✗) <span class="code">(UX-01)</span></div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s4f"><div class="body"><div class="txt"><b>이상소음·진동</b> — 정상품 대비 유난히 시끄럽거나 떨리는 개체 골라내기</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+  <div class="item" data-id="s4k"><div class="body"><div class="txt"><b>충전 인식</b> — 충전기 꽂으면 충전 표시 켜짐 · 뽑으면 꺼짐</div></div><div class="btns"><button class="btn ok">OK</button><button class="btn ng">NG</button></div></div>
+<div class="memo">
+    <label>비고 / 추가 피드백</label>
+    <textarea id="memoInput" rows="3" placeholder="이 개체 관련 메모·추가 피드백 (기록·엑셀에 함께 저장돼요)"></textarea>
+  </div>
+
+</main>
+
+<div class="toolbar">
+  <div class="meta">기록 <b id="recBadge">0</b> · <span id="syncStat" class="sync ok">☁ 동기화됨</span></div>
+  <button class="recbtn" id="recBtn">📋 기록</button>
+  <button class="reset" id="resetBtn">💾 저장▶다음</button>
+</div>
+
+<div class="rec-ov" id="recOv">
+  <div class="rec-head"><span class="t">검사 기록</span><button class="x" id="recClose">✕</button></div>
+  <div class="rec-tabs">
+    <button class="rtab active" id="tabLocal">이 기기 <em>0</em></button>
+    <button class="rtab" id="tabCloud">전체 합본 <em>·</em></button>
+  </div>
+  <div class="rec-actions">
+    <button id="exportBtn" class="rec-act primary">⬇ 엑셀(CSV)</button>
+    <button id="archiveBtn" class="rec-act arch" style="display:none;">📦 보관 0</button>
+    <button id="clearRecBtn" class="rec-act danger">삭제</button>
+  </div>
+  <div class="rec-list" id="recList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="name-ov" id="nameOv">
+  <div class="name-box">
+    <div class="nb-title">KAIPER 출고 전 검사</div>
+    <div class="nb-sub">검사자 이름을 입력하고 시작하세요<br><small>주요 검사만 — 개체당 1분. 6월에 걸린 건 <b>힌지</b>와 <b>슬라이드 스위치</b>였으니 거기 손이 한 번 더 가면 됩니다. LED 위 긁힘은 보호필름이라 정상.</small></div>
+    <input id="nameInput" type="text" autocomplete="off" placeholder="검사자 이름">
+    <button id="nameStart">시작</button>
+  </div>
+</div>
+
+<div class="scan-ov" id="scanOv">
+  <div class="scan-head">
+    <span class="t">📷 바코드 스캔</span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="x" id="torchBtn" style="display:none;width:auto;padding:0 12px;font-size:13px;">🔦 조명</button>
+      <button class="x" id="scanClose">✕</button>
+    </div>
+  </div>
+  <div id="reader"></div>
+  <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="2" style="display:none;">
+  <div class="scan-tip">바코드를 화면 가운데로 (꽉 안 맞아도 OK) · 2배 줌·슬라이더(지원 시) · 초점 잡힐 때까지 정지 · 어두우면 🔦</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+(function(){
+  var KEY='kaiper_ship_v1';
+  var items=[].slice.call(document.querySelectorAll('.item'));
+  var state={};
+  try{ state=JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ state={}; }
+
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){} }
+  function render(){
+    var done=0, critNG=false;
+    items.forEach(function(it){
+      var id=it.getAttribute('data-id');
+      var s=state[id]||'';
+      if(s){ it.setAttribute('data-state',s); done++; }
+      else { it.removeAttribute('data-state'); }
+      if(s==='ng' && it.classList.contains('crit')) critNG=true;
+    });
+    var total=items.length;
+    document.getElementById('pcount').textContent=done+' / '+total;
+    document.getElementById('barfill').style.width=(total? (done/total*100):0)+'%';
+    document.getElementById('critBanner').classList.toggle('show',critNG);
+  }
+  function setState(id,val){
+    state[id]=(state[id]===val)?'':val; // 같은 버튼 다시 누르면 해제
+    save(); render();
+  }
+  items.forEach(function(it){
+    var id=it.getAttribute('data-id');
+    it.querySelector('.btn.ok').addEventListener('click',function(e){e.stopPropagation();setState(id,'ok');});
+    it.querySelector('.btn.ng').addEventListener('click',function(e){e.stopPropagation();setState(id,'ng');});
+    it.addEventListener('click',function(){ setState(id,'ok'); }); // 행 탭 = OK 토글
+  });
+  var serialInput=document.getElementById('serialInput');
+  serialInput.value=state['_serial']||'';
+  serialInput.addEventListener('input',function(){ state['_serial']=serialInput.value; save(); });
+
+  // 바코드 스캐너
+  var scanOv=document.getElementById('scanOv'), html5qr=null, torchOn=false;
+  function fmtList(){
+    if(!window.Html5QrcodeSupportedFormats) return undefined;
+    var F=Html5QrcodeSupportedFormats;
+    return [F.CODE_128,F.CODE_39,F.CODE_93,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.ITF,F.CODABAR,F.QR_CODE,F.DATA_MATRIX];
+  }
+  function startScan(){
+    if(!window.Html5Qrcode){ alert('스캐너 로딩 실패 — 인터넷 연결을 확인하세요.'); return; }
+    scanOv.classList.add('show');
+    html5qr=new Html5Qrcode("reader",{ formatsToSupport:fmtList(), experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false });
+    var vc={ facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}, advanced:[{focusMode:"continuous"}] };
+    html5qr.start({facingMode:"environment"}, {fps:12, videoConstraints:vc},
+      function(text){
+        serialInput.value=text; state['_serial']=text; save();
+        if(navigator.vibrate) navigator.vibrate(90);
+        stopScan();
+      }, function(){}
+    ).then(function(){
+      try{
+        var caps=html5qr.getRunningTrackCapabilities?html5qr.getRunningTrackCapabilities():null;
+        if(caps&&caps.torch){ document.getElementById('torchBtn').style.display='inline-flex'; }
+        if(caps&&caps.zoom){
+          var z=caps.zoom, mn=(z.min||1), mx=(z.max||5), tgt=Math.max(mn,Math.min(2,mx));
+          var sl=document.getElementById('zoomSlider');
+          sl.min=mn; sl.max=mx; sl.step=(z.step||0.1); sl.value=tgt; sl.style.display='block';
+          html5qr.applyVideoConstraints({advanced:[{zoom:tgt}]}).catch(function(){});
+          sl.oninput=function(){ html5qr.applyVideoConstraints({advanced:[{zoom:parseFloat(sl.value)}]}).catch(function(){}); };
+        }
+      }catch(e){}
+    }).catch(function(e){ alert('카메라를 열 수 없어요: '+e); scanOv.classList.remove('show'); });
+  }
+  function stopScan(){
+    if(html5qr){ html5qr.stop().then(function(){ html5qr.clear(); html5qr=null; }).catch(function(){ html5qr=null; }); }
+    torchOn=false; var tb=document.getElementById('torchBtn'); if(tb){ tb.style.display='none'; tb.textContent='🔦 조명'; }
+    var zs=document.getElementById('zoomSlider'); if(zs){ zs.style.display='none'; }
+    scanOv.classList.remove('show');
+  }
+  document.getElementById('scanBtn').addEventListener('click',startScan);
+  document.getElementById('scanClose').addEventListener('click',stopScan);
+  document.getElementById('torchBtn').addEventListener('click',function(){
+    if(!html5qr) return; torchOn=!torchOn;
+    html5qr.applyVideoConstraints({advanced:[{torch:torchOn}]}).then(function(){
+      document.getElementById('torchBtn').textContent=torchOn?'🔦 끄기':'🔦 조명';
+    }).catch(function(){ torchOn=!torchOn; });
+  });
+
+  // 비고
+  var memoInput=document.getElementById('memoInput');
+  memoInput.value=state['_memo']||'';
+  memoInput.addEventListener('input',function(){ state['_memo']=memoInput.value; save(); });
+
+  // 토스트
+  var toastEl=document.getElementById('toast'), toastT=null;
+  function toast(msg){ toastEl.textContent=msg; toastEl.classList.add('show'); if(toastT)clearTimeout(toastT);
+    toastT=setTimeout(function(){ toastEl.classList.remove('show'); },1800); }
+  function pad(n){ return (n<10?'0':'')+n; }
+  function labelOf(it){ var t=it.querySelector('.txt').textContent.replace(/\s+/g,' ').trim().replace(/^핵심\s*/,'');
+    return t.split('—')[0].trim(); }
+  function esc(s){ return (''+(s||'')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // 검사자
+  var IKEY='kaiper_ship_inspector';
+  var inspector=localStorage.getItem(IKEY)||'';
+  var nameOv=document.getElementById('nameOv'), nameInput=document.getElementById('nameInput'), whoName=document.getElementById('whoName');
+  function setInspector(n){ inspector=n; try{ localStorage.setItem(IKEY,n); }catch(e){} whoName.textContent=n||'—'; }
+  function openName(){ nameInput.value=inspector; nameOv.classList.add('show'); setTimeout(function(){ try{nameInput.focus();}catch(e){} },60); }
+  document.getElementById('nameStart').addEventListener('click',function(){
+    var n=(nameInput.value||'').trim(); if(!n){ nameInput.focus(); return; }
+    setInspector(n); nameOv.classList.remove('show');
+  });
+  nameInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ document.getElementById('nameStart').click(); } });
+  document.getElementById('whoChip').addEventListener('click',openName);
+  setInspector(inspector);
+  if(!inspector){ openName(); }
+
+  // 기록 저장소 + 클라우드 합본
+  var CLOUD='https://kvdb.io/3YEp7XsuxXVRThbAnD6skw';
+  var RKEY='kaiper_ship_records', PKEY='kaiper_ship_pending';
+  var records=[], pending=[], cloudRecords=[], viewMode='local', showArchive=false;
+  try{ records=JSON.parse(localStorage.getItem(RKEY))||[]; }catch(e){ records=[]; }
+  try{ pending=JSON.parse(localStorage.getItem(PKEY))||[]; }catch(e){ pending=[]; }
+  var bydt=function(a,b){ var x=a.dt||'',y=b.dt||''; return x<y?-1:(x>y?1:0); };
+  // 같은 시리얼: 최신 1건=결과(latest), 나머지=보관(archived). 시리얼 없는 건은 모두 latest.
+  function splitDedup(list){
+    var sorted=list.slice().sort(bydt), latestBy={};
+    sorted.forEach(function(r){ var s=(r.serial||'').trim(); if(s) latestBy[s]=r; });
+    var latest=[], archived=[];
+    list.forEach(function(r){ var s=(r.serial||'').trim();
+      if(!s || latestBy[s]===r) latest.push(r); else archived.push(r); });
+    latest.sort(bydt); archived.sort(bydt);
+    return {latest:latest, archived:archived};
+  }
+  function updateSync(){ var el=document.getElementById('syncStat'); if(!el) return;
+    el.textContent = pending.length ? ('⟳ 미전송 '+pending.length) : '☁ 동기화됨';
+    el.className = 'sync '+(pending.length?'pend':'ok'); }
+  function saveRecords(){ try{ localStorage.setItem(RKEY,JSON.stringify(records)); }catch(e){}
+    document.getElementById('recBadge').textContent=splitDedup(records).latest.length; updateSync(); }
+  function savePending(){ try{ localStorage.setItem(PKEY,JSON.stringify(pending)); }catch(e){} updateSync(); }
+  function uid(){ return 'ship_'+Date.now()+'_'+Math.floor(Math.random()*1e9); }
+  var flushing=false;
+  function flushPending(){ if(flushing || !pending.length) return; flushing=true;
+    var rec=pending[0];
+    fetch(CLOUD+'/'+rec.id, {method:'POST', body:JSON.stringify(rec)}).then(function(r){ flushing=false;
+      if(r && r.ok){ pending.shift(); savePending(); flushPending(); } })
+      .catch(function(){ flushing=false; }); }
+
+  function saveNext(){
+    var ng=[], ok=0;
+    items.forEach(function(it){ var s=state[it.getAttribute('data-id')];
+      if(s==='ok') ok++; else if(s==='ng') ng.push(labelOf(it)); });
+    var serial=(state['_serial']||'').trim();
+    if(!serial){ toast('⚠️ 시리얼을 먼저 입력하세요'); serialInput.focus(); return; }
+    var unchecked=items.length-(ok+ng.length);
+    if(unchecked>0){
+      toast('⚠️ 미체크 '+unchecked+'개 — 모든 항목을 체크해야 넘어가요');
+      for(var u=0;u<items.length;u++){ if(!state[items[u].getAttribute('data-id')]){
+        items[u].scrollIntoView({behavior:'smooth',block:'center'});
+        items[u].classList.add('flash'); (function(el){ setTimeout(function(){ el.classList.remove('flash'); },1400); })(items[u]);
+        break; } }
+      return;
+    }
+    var d=new Date();
+    var dt=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+    var verdict = ng.length ? 'NG' : 'PASS';
+    var rec={id:uid(), inspector:inspector, serial:serial, dt:dt, verdict:verdict, ng:ng, memo:(state['_memo']||'').trim()};
+    records.push(rec); saveRecords();   // 전부 보관(겹쳐도 삭제 안 함)
+    pending.push(rec); savePending(); flushPending();
+    state={}; save(); render(); serialInput.value=''; memoInput.value='';
+    window.scrollTo({top:0,behavior:'smooth'});
+    toast('✓ 저장됨 · 결과 '+splitDedup(records).latest.length+'건');
+  }
+  document.getElementById('resetBtn').addEventListener('click',saveNext);
+
+  // 기록 보기 (이 기기 / 전체 합본)
+  var recOv=document.getElementById('recOv');
+  function curList(){ return viewMode==='cloud' ? cloudRecords : records; }
+  function renderRecords(){
+    var parts=splitDedup(curList()), local=(viewMode==='local');
+    var list = showArchive ? parts.archived : parts.latest;
+    document.getElementById('tabLocal').querySelector('em').textContent=splitDedup(records).latest.length;
+    var ab=document.getElementById('archiveBtn');
+    ab.textContent='📦 보관 '+parts.archived.length;
+    ab.style.display = parts.archived.length ? 'inline-block' : 'none';
+    ab.classList.toggle('on', showArchive);
+    document.getElementById('clearRecBtn').style.display = (local && !showArchive) ? '' : 'none';
+    if(!list.length){ document.getElementById('recList').innerHTML='<div class="rec-empty">'+(showArchive?'겹친 과거 기록이 없어요.':(viewMode==='cloud'?'합본 데이터가 없어요.':'아직 저장된 기록이 없어요.'))+'</div>'; return; }
+    var h='';
+    list.forEach(function(r){
+      var cls=r.verdict==='PASS'?'pass':(r.verdict==='NG'?'ng':'inc');
+      h+='<div class="rec-row'+(showArchive?' arch':'')+'">'
+        +'<div class="rec-top"><b>'+(esc(r.serial)||'(시리얼 없음)')+'</b><span class="vd '+cls+'">'+r.verdict+(r.ng&&r.ng.length?' '+r.ng.length+'건':'')+'</span></div>'
+        +'<div class="rec-meta">'+(showArchive?'⤵ 이전 버전 · ':'')+esc(r.dt||'')+(r.inspector?' · '+esc(r.inspector):'')+'</div>'
+        +(r.ng&&r.ng.length?'<div class="rec-ng">NG: '+esc(r.ng.join(', '))+'</div>':'')
+        +(r.memo?'<div class="rec-memo">'+esc(r.memo)+'</div>':'')
+        +((local&&!showArchive)?'<div class="rec-foot"><button class="rec-del" data-id="'+esc(r.id||'')+'">삭제</button></div>':'')
+        +'</div>';
+    });
+    document.getElementById('recList').innerHTML=h;
+  }
+  function setTab(mode){
+    viewMode=mode; showArchive=false;
+    document.getElementById('tabLocal').classList.toggle('active',mode==='local');
+    document.getElementById('tabCloud').classList.toggle('active',mode==='cloud');
+    if(mode==='cloud'){
+      document.getElementById('recList').innerHTML='<div class="rec-empty">불러오는 중…</div>';
+      flushPending();
+      fetch(CLOUD+'/?prefix=ship_&values=true&format=json').then(function(r){return r.json();}).then(function(arr){
+        cloudRecords=arr.map(function(kv){ try{return JSON.parse(kv[1]);}catch(e){return null;} }).filter(Boolean);
+        document.getElementById('tabCloud').querySelector('em').textContent=splitDedup(cloudRecords).latest.length;
+        renderRecords();
+      }).catch(function(){ document.getElementById('recList').innerHTML='<div class="rec-empty">합본을 불러오지 못했어요. 인터넷 확인 후 다시 시도하세요.</div>'; });
+    } else { renderRecords(); }
+  }
+  document.getElementById('recBtn').addEventListener('click',function(){ setTab('local'); recOv.classList.add('show'); });
+  document.getElementById('recClose').addEventListener('click',function(){ recOv.classList.remove('show'); });
+  document.getElementById('tabLocal').addEventListener('click',function(){ setTab('local'); });
+  document.getElementById('tabCloud').addEventListener('click',function(){ setTab('cloud'); });
+  document.getElementById('archiveBtn').addEventListener('click',function(){ showArchive=!showArchive; renderRecords(); });
+  document.getElementById('recList').addEventListener('click',function(e){
+    var b=e.target.closest('.rec-del'); if(!b) return;
+    var id=b.getAttribute('data-id');
+    if(confirm('이 기록을 삭제할까요? (이 기기 목록만, 합본은 유지)')){ records=records.filter(function(r){ return r.id!==id; }); saveRecords(); renderRecords(); }
+  });
+  document.getElementById('clearRecBtn').addEventListener('click',function(){
+    if(!records.length) return;
+    if(confirm('이 기기 '+records.length+'건을 전부 삭제할까요? (합본 클라우드는 유지)')){ records=[]; saveRecords(); renderRecords(); }
+  });
+
+  // 엑셀(CSV) 내보내기 — 현재 탭 기준 ('전체 합본' 탭이면 4명 통합본)
+  document.getElementById('exportBtn').addEventListener('click',function(){
+    var parts=splitDedup(curList());
+    var list = showArchive ? parts.archived : parts.latest;
+    if(!list.length){ toast('내보낼 기록이 없어요'); return; }
+    var rows=[['번호','검사자','시리얼','검사일시','판정','NG건수','NG항목','비고']];
+    list.forEach(function(r,i){ rows.push([i+1, r.inspector||'', r.serial||'', r.dt||'', r.verdict||'', (r.ng||[]).length, (r.ng||[]).join('; '), r.memo||'']); });
+    var csv=rows.map(function(row){ return row.map(function(c){ c=(''+c).replace(/"/g,'""');
+      return /[",\n\r]/.test(c)?'"'+c+'"':c; }).join(','); }).join('\r\n');
+    var blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:'text/csv;charset=utf-8;'});
+    var d=new Date(), tag=(viewMode==='cloud'?'합본':'이기기')+(showArchive?'_보관':'');
+    var fn='KAIPER_QC_'+tag+'_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.csv';
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+    toast('⬇ '+list.length+'건 내보냄 ('+tag+')');
+  });
+
+  saveRecords();
+  flushPending();
+  render();
+})();
+</script>
+</body>
+</html>
